@@ -1,0 +1,412 @@
+[gd_scene load_steps=2 format=3 uid="uid://umx5wue4gs30"]
+
+[ext_resource type="Script" uid="uid://rruj85y2avvm" path="res://scenes/chat_panel.gd" id="1_1a2b3c"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="UILayer" type="CanvasLayer" parent="."]
+
+[node name="MainUI" type="Control" parent="UILayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ChatPanel" type="Panel" parent="UILayer/MainUI"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -379.0
+offset_right = 258.0
+offset_bottom = -10.0
+grow_vertical = 0
+script = ExtResource("1_1a2b3c")
+
+[node name="ChatContainer" type="VBoxContainer" parent="UILayer/MainUI/ChatPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ChatDisplay" type="RichTextLabel" parent="UILayer/MainUI/ChatPanel/ChatContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="ChatInput" type="LineEdit" parent="UILayer/MainUI/ChatPanel/ChatContainer"]
+layout_mode = 2
+placeholder_text = "Type a message..."
+
+[node name="TurnOrderPanel" type="VBoxContainer" parent="UILayer/MainUI"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -150.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 300.0
+grow_horizontal = 0
+
+[node name="TurnOrderLabel" type="Label" parent="UILayer/MainUI/TurnOrderPanel"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 14
+text = "Turn Order"
+horizontal_alignment = 1
+
+[node name="CurrentEntity" type="Panel" parent="UILayer/MainUI/TurnOrderPanel"]
+custom_minimum_size = Vector2(130, 60)
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="CurrentEntityContainer" type="VBoxContainer" parent="UILayer/MainUI/TurnOrderPanel/CurrentEntity"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CurrentEntityName" type="Label" parent="UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Player"
+horizontal_alignment = 1
+
+[node name="CurrentEntityHP" type="Label" parent="UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "HP: 60/60"
+horizontal_alignment = 1
+
+[node name="CurrentEntityStatus" type="Label" parent="UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+theme_override_font_sizes/font_size = 8
+text = "ACTIVE"
+horizontal_alignment = 1
+
+[node name="NextEntity1" type="Panel" parent="UILayer/MainUI/TurnOrderPanel"]
+custom_minimum_size = Vector2(130, 40)
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="NextEntity1Container" type="VBoxContainer" parent="UILayer/MainUI/TurnOrderPanel/NextEntity1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntityName" type="Label" parent="UILayer/MainUI/TurnOrderPanel/NextEntity1/NextEntity1Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Goblin Warrior"
+horizontal_alignment = 1
+
+[node name="EntityHP" type="Label" parent="UILayer/MainUI/TurnOrderPanel/NextEntity1/NextEntity1Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "HP: 45/45"
+horizontal_alignment = 1
+
+[node name="NextEntity2" type="Panel" parent="UILayer/MainUI/TurnOrderPanel"]
+custom_minimum_size = Vector2(130, 40)
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="NextEntity2Container" type="VBoxContainer" parent="UILayer/MainUI/TurnOrderPanel/NextEntity2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntityName" type="Label" parent="UILayer/MainUI/TurnOrderPanel/NextEntity2/NextEntity2Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Orc Shaman"
+horizontal_alignment = 1
+
+[node name="EntityHP" type="Label" parent="UILayer/MainUI/TurnOrderPanel/NextEntity2/NextEntity2Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "HP: 35/35"
+horizontal_alignment = 1
+
+[node name="NextEntity3" type="Panel" parent="UILayer/MainUI/TurnOrderPanel"]
+custom_minimum_size = Vector2(130, 40)
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="NextEntity3Container" type="VBoxContainer" parent="UILayer/MainUI/TurnOrderPanel/NextEntity3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EntityName" type="Label" parent="UILayer/MainUI/TurnOrderPanel/NextEntity3/NextEntity3Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "Dire Wolf"
+horizontal_alignment = 1
+
+[node name="EntityHP" type="Label" parent="UILayer/MainUI/TurnOrderPanel/NextEntity3/NextEntity3Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 8
+text = "HP: 50/50"
+horizontal_alignment = 1
+
+[node name="StatDisplay" type="Panel" parent="UILayer/MainUI"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.239
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -39.785
+offset_top = -157.0
+offset_right = -205.865
+offset_bottom = -10.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UILayer/MainUI/StatDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HPDisplay" type="Panel" parent="UILayer/MainUI/StatDisplay/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HPContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HeartIcon" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 24
+text = "♥"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HPText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "60/60"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="APDisplay" type="Panel" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="APContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LightningIcon" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay/APContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 24
+text = "⚡"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="APText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay/APContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "6/6"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MPDisplay" type="Panel" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MPContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ShoeIcon" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay/MPContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 24
+text = "👟"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MPText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay/MPContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "3/3"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AbilityBar" type="Panel" parent="UILayer/MainUI"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -198.0
+offset_top = -157.0
+offset_right = -210.0
+offset_bottom = -10.0
+
+[node name="AbilityContainer" type="VBoxContainer" parent="UILayer/MainUI/AbilityBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AbilitiesLabel" type="Label" parent="UILayer/MainUI/AbilityBar/AbilityContainer"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Abilities"
+horizontal_alignment = 1
+
+[node name="AbilityGrid" type="HBoxContainer" parent="UILayer/MainUI/AbilityBar/AbilityContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Ability1" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "1"
+
+[node name="Ability2" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "2"
+
+[node name="Ability3" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "3"
+
+[node name="Ability4" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "4"
+
+[node name="Ability5" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "5"
+
+[node name="Ability6" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "6"
+
+[node name="FightControls" type="Panel" parent="UILayer/MainUI"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -80.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="ButtonContainer" type="HBoxContainer" parent="UILayer/MainUI/FightControls"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EndTurnBtn" type="Button" parent="UILayer/MainUI/FightControls/ButtonContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 3.0
+text = "End Turn"
+
+[node name="GiveUpBtn" type="Button" parent="UILayer/MainUI/FightControls/ButtonContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Give Up"

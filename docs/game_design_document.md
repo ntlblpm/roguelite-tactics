@@ -12,6 +12,17 @@
 
 A tactical combat game where 1-4 players cooperatively navigate procedurally generated encounters, managing AP/MP resources in turn-based combat similar to Dofus. Players have persistent progression through class levels and roster levels, while individual runs feature separate character progression and equipment discovery.
 
+### Visual Presentation & Gameplay Feel
+
+Players view the battlefield from a **45-degree rotated isometric camera angle**, creating the classic tactical RPG diamond grid appearance. Characters and enemies face one of four diagonal directions (northeast, southeast, southwest, northwest), moving along diamond-shaped tiles that appear as rotated squares on screen.
+
+**What Players Experience:**
+- **Tactical Positioning**: Each turn involves carefully planning movement and ability usage within AP/MP constraints
+- **Cooperative Strategy**: Players coordinate positioning, ability combinations, and resource management
+- **Progressive Encounters**: Navigate through increasingly challenging procedurally generated battles
+- **Character Growth**: Watch characters evolve both within individual runs and across multiple play sessions
+- **Equipment Discovery**: Find and equip class-appropriate gear that visually and mechanically enhances characters
+
 ## Multiplayer Architecture
 
 - **Networking**: Peer-to-peer with one player hosting
@@ -51,7 +62,13 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
   - Multiple loadout presets per class
   - Equipment selection between runs only (no mid-run switching)
 - **Currency**: Gold earned during runs and from selling equipment
-- **Storage**: No inventory limits currently planned
+- **Storage**: No inventory limits currently planned\
+
+#### Gold Currency
+- Earned during combat encounters
+- Found from defeating enemies and bosses
+- Used for purchasing equipment from shop
+- Gained from selling unwanted equipment
 
 ### Run-Based Progression
 
@@ -61,12 +78,6 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
 - Provides skill tree advancement points
 - Determines available abilities and powers
 - Completely separate from persistent levels
-
-#### Gold Currency
-- Earned during combat encounters
-- Found from defeating enemies and bosses
-- Used for purchasing equipment from shop
-- Gained from selling unwanted equipment
 
 ## Combat System
 
@@ -90,6 +101,22 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
 3. Movement and abilities must follow diamond grid constraints
 4. Turn ends when player chooses or no more actions possible
 5. Continue until all enemies defeated or party dies
+
+### What Combat Looks Like
+
+**Turn-Based Tactical Gameplay:**
+- **Visual Feedback**: When it's your turn, valid movement tiles highlight in blue, ability ranges show in colored overlays
+- **Resource Management**: AP/MP counters display prominently, showing available actions at a glance
+- **Positioning Matters**: Characters face diagonal directions, with abilities often requiring specific positioning or line-of-sight
+- **Cooperative Decision-Making**: Players discuss strategy, plan combinations, and coordinate positioning during each turn
+- **Visual Clarity**: Diamond tiles, character orientation, and ability effects all align with the 45-degree camera perspective
+
+**Example Turn Sequence:**
+1. **Movement Phase**: Click valid diamond tiles to move your character diagonally across the battlefield
+2. **Ability Selection**: Choose from available abilities based on remaining AP and tactical situation
+3. **Target Selection**: Click on enemy or ally within range, with visual indicators showing area of effect
+4. **Animation & Resolution**: Watch your character face the target direction and execute the ability with visual effects
+5. **Turn End**: Confirm your actions or pass turn, with all resource expenditures clearly displayed
 
 ## Classes (Initial 4)
 
@@ -116,13 +143,18 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
 ## Grid System & Level Design
 
 ### Diamond Grid Layout (Dofus-Inspired)
-- **Base Dimensions**: 20 tiles wide × 28 tiles tall rectangular container
+- **Base Dimensions**: 20 tiles wide × 20 tiles tall rectangular container (400 total tiles)
 - **Playable Area**: Diamond/rhombus shape within the rectangular grid
-- **Total Playable Tiles**: ~560 tiles (varies slightly by room generation)
+- **Total Playable Tiles**: ~300 tiles (varies by room generation and obstacle placement)
+- **Tile Reduction Factors**:
+  - **Edge Removal**: Diamond shape cuts off corners and tapered edges (~50-70 tiles removed)
+  - **Random Obstacles**: Procedurally placed walls, rocks, pillars block movement and LOS (~30-50 tiles removed)
+  - **Generation Variance**: Different layouts may have slightly different playable areas
 - **Diamond Characteristics**:
   - Top and bottom rows: Fewer accessible tiles (tapered edges)
-  - Middle rows: Maximum width (full 20 tiles)
+  - Middle rows: Maximum width (full 20 tiles accessible)
   - Diagonal edge cutoffs: Creates characteristic diamond battlefield shape
+  - Obstacle Distribution: Randomly placed throughout diamond area for tactical variety
 
 ### Grid Mechanics
 - **Movement**: Along diamond grid directions (top-left, top-right, bottom-left, bottom-right)
@@ -135,11 +167,20 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
   - **Special**: Interactive tiles (switches, traps, etc.)
 
 ### Room Structure
-- **Camera**: Fixed isometric view optimized for diamond grid visibility
-- **Size**: All rooms fit within the same camera position/angle/zoom
-- **Grid Consistency**: Every encounter uses the same 20×28 diamond grid layout
-- **Generation**: Completely new layouts between encounters
+- **Camera**: Fixed 45-degree rotated isometric view optimized for diamond grid visibility
+- **Visual Style**: Diamond-shaped tiles (rotated squares) create the classic tactical RPG battlefield appearance
+- **Entity Orientation**: All characters and objects face diagonal directions (NE, SE, SW, NW) aligned with movement grid
+- **Size**: All rooms fit within the same camera position/angle/zoom for consistent tactical overview
+- **Grid Consistency**: Every encounter uses the same 20×20 diamond grid layout with ~300 playable tiles
+- **Generation**: Completely new obstacle layouts between encounters while maintaining grid structure
 - **Implementation**: Replace entire room scene between encounters
+
+### Battlefield Appearance
+- **Diamond Grid**: Tiles appear as diamond shapes due to 45-degree camera rotation
+- **Movement Indicators**: Valid movement tiles highlight clearly during player turns
+- **Line of Sight**: Visual indicators show which tiles have clear sight lines for targeting
+- **Obstacle Variety**: Rocks, walls, and pillars create tactical cover and movement challenges
+- **Character Positioning**: All units face one of four diagonal directions, creating clear front/back orientations
 
 ### Encounter Types
 - **Regular Combat**: Standard enemy encounters on diamond grid
@@ -182,6 +223,36 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
 6. **Final Boss**: Culminating encounter
 7. **Run End**: Success (boss defeated) or failure (party death)
 
+### What a Complete Run Looks Like
+
+**Pre-Run Setup (5-10 minutes):**
+- Players gather in lobby and select their preferred classes
+- Each player chooses equipment loadout from their collection
+- Host starts the run, generating the first encounter
+
+**Early Encounters (30-45 minutes):**
+- Face 3-4 groups of basic enemies on varied diamond grid battlefields
+- Learn to coordinate movement and abilities within AP/MP constraints
+- Characters gain levels 1-3, unlocking basic skill tree options
+- Discover initial equipment drops and small amounts of gold
+
+**Mid-Run Progression (45-60 minutes):**
+- Encounter elite enemies with unique abilities and positioning challenges
+- Characters reach levels 4-6, accessing more powerful abilities
+- Find rare equipment with significant stat improvements
+- Players develop advanced tactical combinations
+
+**Final Boss Encounter (15-30 minutes):**
+- Single challenging boss fight with unique mechanics
+- Requires mastery of positioning, resource management, and team coordination
+- Success provides substantial rewards; failure ends the run
+
+**Post-Run Results:**
+- All players gain persistent class XP and roster XP regardless of outcome
+- Successful runs provide bonus rewards and equipment
+- New equipment permanently added to player collections
+- Players can immediately start another run or customize loadouts
+
 ### End Conditions
 - **Success**: Final boss defeated
 - **Failure**: Entire party dies
@@ -196,7 +267,7 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
 ## Technical Implementation Priority
 
 ### Phase 1: Core Mechanics
-- Diamond grid system implementation (20×28 with diamond playable area)
+- Diamond grid system implementation (20×20 with diamond playable area)
 - Isometric coordinate mapping and tile management
 - 4-directional movement system with diamond grid constraints
 - Turn-based combat framework
@@ -253,14 +324,18 @@ A tactical combat game where 1-4 players cooperatively navigate procedurally gen
 - Scene-based room replacement system
 
 ### Diamond Grid Implementation
+- **Camera Setup**: Configure camera with 45-degree horizontal rotation for proper diamond grid view
 - **Coordinate System**: Convert between world coordinates and diamond grid coordinates
 - **Grid Representation**: 2D array with boolean flags for walkable/blocked tiles
-- **Isometric Rendering**: Use Godot's isometric projection for proper visual alignment
+- **Isometric Rendering**: Use Godot's isometric projection with 45-degree rotation for visual alignment
+- **Tile Visualization**: Render tiles as diamond shapes (45-degree rotated rectangles)
+- **Entity Orientation**: Ensure all characters and objects face diagonal directions (NE, SE, SW, NW)
 - **Tile Mapping**: Map rectangular array indices to diamond shape accessibility
 - **Movement Validation**: Check grid boundaries and tile accessibility for movement
 - **Pathfinding**: Implement A* or similar algorithm respecting diamond grid constraints
 - **LOS Algorithm**: Ray-casting or Bresenham-style algorithm adapted for diamond grid
 - **Visual Feedback**: Highlight valid movement tiles and ability ranges during player turns
+- **UI Overlay**: Position AP/MP counters, ability bars, and status indicators for optimal visibility
 
 ### Save Data Structure
 ```
