@@ -20,11 +20,16 @@ var astar_initialized: bool = false
 var movement_highlights: Array[Vector2i] = []
 var highlight_tiles_parent: Node2D = null
 
+# Grid border visualization
+var grid_borders_parent: Node2D = null
+var grid_borders_visible: bool = false
+
 # Signals
 signal tile_clicked(grid_position: Vector2i)
 
 func _ready() -> void:
 	_setup_highlight_system()
+	_setup_grid_borders_system()
 	_initialize_astar_grid()
 
 func _setup_highlight_system() -> void:
@@ -32,6 +37,12 @@ func _setup_highlight_system() -> void:
 	highlight_tiles_parent = Node2D.new()
 	highlight_tiles_parent.name = "MovementHighlights"
 	add_child(highlight_tiles_parent)
+
+func _setup_grid_borders_system() -> void:
+	"""Setup the visual grid borders system for all tiles"""
+	grid_borders_parent = Node2D.new()
+	grid_borders_parent.name = "GridBorders"
+	add_child(grid_borders_parent)
 
 func _initialize_astar_grid() -> void:
 	"""Initialize the A* grid for pathfinding"""
@@ -166,8 +177,8 @@ func _create_highlight_tile(grid_position: Vector2i) -> void:
 	var highlight: Polygon2D = Polygon2D.new()
 	
 	# Create diamond shape that matches isometric tile appearance
-	var half_width: float = tile_size.x * 0.4  # Slightly smaller than tile for visibility
-	var half_height: float = tile_size.y * 0.4
+	var half_width: float = tile_size.x * 0.45  # Full tile size for complete coverage
+	var half_height: float = tile_size.y * 0.45
 	
 	# Define diamond vertices (clockwise from top)
 	var diamond_points: PackedVector2Array = PackedVector2Array([
@@ -178,8 +189,9 @@ func _create_highlight_tile(grid_position: Vector2i) -> void:
 	])
 	
 	highlight.polygon = diamond_points
-	highlight.color = Color(0, 1, 0, 0.4)  # Semi-transparent green
+	highlight.color = Color(0, 0.9, 0, 0.9)  # Semi-transparent green with 90% opacity
 	highlight.position = grid_to_world(grid_position)
+	highlight.z_index = 1  # Render above tilemap but below characters
 	
 	highlight_tiles_parent.add_child(highlight)
 
@@ -247,3 +259,81 @@ func debug_print_tile_info(grid_position: Vector2i) -> void:
 		else:
 			print("No tile data found")
 	print("========================") 
+
+func show_grid_borders() -> void:
+	"""Display borders on all valid grid tiles"""
+	if grid_borders_visible:
+		return
+	
+	grid_borders_visible = true
+	_create_all_grid_borders()
+
+func hide_grid_borders() -> void:
+	"""Hide all grid border visuals"""
+	if not grid_borders_visible:
+		return
+	
+	grid_borders_visible = false
+	_clear_grid_borders()
+
+func toggle_grid_borders() -> void:
+	"""Toggle grid border visibility"""
+	if grid_borders_visible:
+		hide_grid_borders()
+	else:
+		show_grid_borders()
+
+func _create_all_grid_borders() -> void:
+	"""Create border visuals for all valid grid tiles"""
+	_clear_grid_borders()
+	
+	for x in range(-grid_width/2, grid_width/2):
+		for y in range(-grid_height/2, grid_height/2):
+			var grid_pos = Vector2i(x, y)
+			if is_position_valid(grid_pos):
+				_create_grid_border_tile(grid_pos)
+
+func _create_grid_border_tile(grid_position: Vector2i) -> void:
+	"""Create a border visual at a specific grid position"""
+	var border: Polygon2D = Polygon2D.new()
+	
+	# Create diamond shape outline that matches isometric tile appearance
+	var half_width: float = tile_size.x * 0.5
+	var half_height: float = tile_size.y * 0.5
+	
+	# Define diamond vertices (clockwise from top) - slightly larger for border visibility
+	var diamond_points: PackedVector2Array = PackedVector2Array([
+		Vector2(0, -half_height),           # Top
+		Vector2(half_width, 0),             # Right  
+		Vector2(0, half_height),            # Bottom
+		Vector2(-half_width, 0)             # Left
+	])
+	
+	border.polygon = diamond_points
+	border.color = Color.TRANSPARENT  # Transparent fill
+	border.position = grid_to_world(grid_position)
+	border.z_index = 0  # Render below movement highlights and characters
+	
+	# Add outline using a Line2D for the border
+	var outline: Line2D = Line2D.new()
+	var outline_points: PackedVector2Array = PackedVector2Array([
+		Vector2(0, -half_height),           # Top
+		Vector2(half_width, 0),             # Right  
+		Vector2(0, half_height),            # Bottom
+		Vector2(-half_width, 0),            # Left
+		Vector2(0, -half_height)            # Close the shape
+	])
+	
+	outline.points = outline_points
+	outline.width = 1.0
+	outline.default_color = Color(0.4, 0.4, 0.4, 0.6)  # Semi-transparent gray
+	outline.z_index = 0
+	
+	border.add_child(outline)
+	grid_borders_parent.add_child(border)
+
+func _clear_grid_borders() -> void:
+	"""Remove all grid border visuals"""
+	if grid_borders_parent:
+		for child in grid_borders_parent.get_children():
+			child.queue_free() 

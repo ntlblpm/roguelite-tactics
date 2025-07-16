@@ -75,6 +75,9 @@ func _create_swordsman() -> void:
 	# Add to scene
 	$CombatArea.add_child(swordsman)
 	
+	# Ensure character renders above movement highlights
+	swordsman.z_index = 2
+	
 	print("Swordsman created at grid position: ", start_position)
 
 func _connect_systems() -> void:
@@ -104,6 +107,12 @@ func _connect_systems() -> void:
 	# Initialize turn manager
 	if turn_manager and swordsman and end_turn_button and chat_panel:
 		turn_manager.initialize(swordsman, end_turn_button, chat_panel)
+	
+	# Show grid borders by default
+	if grid_manager:
+		grid_manager.show_grid_borders()
+		if chat_panel:
+			chat_panel.add_system_message("Grid borders enabled - Press G to toggle")
 	
 	print("All systems connected")
 
@@ -173,6 +182,8 @@ func _input(event: InputEvent) -> void:
 				_debug_test_movement()
 			KEY_F3:
 				_debug_test_damage()
+			KEY_G:
+				_toggle_grid_borders()
 
 func _debug_print_game_state() -> void:
 	"""Debug function to print current game state"""
@@ -203,6 +214,15 @@ func _debug_test_damage() -> void:
 		print("Testing damage - Before: ", swordsman.current_health_points)
 		swordsman.take_damage(10)
 		print("After taking 10 damage: ", swordsman.current_health_points)
+
+func _toggle_grid_borders() -> void:
+	"""Toggle grid border visibility"""
+	if grid_manager:
+		grid_manager.toggle_grid_borders()
+		var state = "enabled" if grid_manager.grid_borders_visible else "disabled"
+		if chat_panel:
+			chat_panel.add_system_message("Grid borders " + state)
+		print("Grid borders ", state)
 
 func get_swordsman() -> SwordsmanCharacter:
 	"""Get reference to the swordsman character"""
