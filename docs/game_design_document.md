@@ -10,7 +10,7 @@
 
 ## Core Concept
 
-A tactical combat game where 1-4 players cooperatively navigate procedurally generated encounters, managing AP/MP resources in turn-based combat similar to Dofus. Players have persistent progression through class levels and roster levels, while individual runs feature separate character progression and equipment discovery.
+A tactical combat game where 1-4 players cooperatively navigate procedurally generated encounters through multiplayer networking, managing AP/MP resources in turn-based combat similar to Dofus. Even solo play requires hosting a multiplayer session, allowing others to join at any time. Players have persistent progression through class levels and roster levels, while individual runs feature separate character progression and equipment discovery.
 
 ### Visual Presentation & Gameplay Feel
 
@@ -272,7 +272,7 @@ Players view the battlefield from a **45-degree rotated isometric camera angle**
 - Turn-based combat framework
 - AP/MP resource management
 - Line of Sight calculation system
-- Single-player combat prototype
+- Multiplayer networking foundation
 
 ### Phase 2: Character Systems
 - Class implementation (4 initial classes)

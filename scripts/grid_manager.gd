@@ -84,6 +84,17 @@ func set_tilemap_layer(layer: TileMapLayer) -> void:
 		print("Grid manager connected to TileMapLayer")
 		_initialize_astar_grid()
 
+func refresh_pathfinding_grid() -> void:
+	"""Refresh the A* grid to match current tilemap state"""
+	if not astar_initialized:
+		print("Warning: Cannot refresh pathfinding grid - A* not initialized")
+		return
+	
+	print("Refreshing pathfinding grid to match current tilemap state")
+	_update_walkable_points()
+	astar_grid.update()
+	print("Pathfinding grid refresh completed")
+
 func world_to_grid(world_position: Vector2) -> Vector2i:
 	"""Convert world coordinates to grid coordinates"""
 	if not tilemap_layer:
@@ -130,12 +141,19 @@ func is_position_walkable(grid_position: Vector2i) -> bool:
 	if not tile_data:
 		return false
 	
-	# Check terrain type - terrain 0 is typically walkable, terrain 1 is blocked
-	# This depends on how your tileset is configured
+	# Check terrain type - terrain 0 is walkable, terrain 1 is blocked for all terrain sets
+	# Validate that the terrain set exists and has the expected setup
 	var terrain_set: int = tile_data.terrain_set
 	var terrain: int = tile_data.terrain
 	
-	# For the isometric tileset, terrain 0 seems to be pathable, terrain 1 is non-pathable
+	# Ensure terrain set is valid (should be 0-4 based on tileset configuration)
+	if terrain_set < 0 or terrain_set > 4:
+		print("Warning: Invalid terrain set ", terrain_set, " at position ", grid_position)
+		return false
+	
+	# For all terrain sets in the isometric tileset:
+	# - terrain 0 = "Pathable" or walkable terrain
+	# - terrain 1 = "Non-pathable" or blocked terrain
 	return terrain == 0
 
 func get_valid_movement_positions(from_position: Vector2i, movement_range: int) -> Array[Vector2i]:
@@ -206,6 +224,38 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var clicked_grid_pos: Vector2i = world_to_grid(get_global_mouse_position())
 		tile_clicked.emit(clicked_grid_pos)
+	
+	# Debug keyboard shortcuts for testing pathfinding
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_T:
+				# Test pathfinding validation with keyboard shortcut
+				_run_pathfinding_tests()
+			KEY_R:
+				# Refresh pathfinding grid
+				refresh_pathfinding_grid()
+			KEY_I:
+				# Print tile info for position under mouse
+				var mouse_grid_pos = world_to_grid(get_global_mouse_position())
+				debug_print_tile_info(mouse_grid_pos)
+
+func _run_pathfinding_tests() -> void:
+	"""Run a series of pathfinding tests to validate the fixes"""
+	print("=== Running Pathfinding Validation Tests ===")
+	
+	# Test 1: Valid path on walkable terrain
+	debug_test_pathfinding(Vector2i(0, 0), Vector2i(3, 3))
+	
+	# Test 2: Try to path to a known blocked terrain
+	# We'll test some positions that should be blocked based on the tileset
+	debug_test_pathfinding(Vector2i(0, 0), Vector2i(-5, -5))
+	
+	# Test 3: Try a longer path that might go through blocked terrain
+	debug_test_pathfinding(Vector2i(-3, -3), Vector2i(5, 5))
+	
+	print("=== Pathfinding Tests Complete ===")
+	print("Press 'R' to refresh pathfinding grid")
+	print("Press 'I' while hovering over a tile to get tile info")
 
 
 func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector2i]:
@@ -234,6 +284,13 @@ func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector
 		var grid_pos = _astar_to_grid_coords(astar_pos)
 		path.append(grid_pos)
 	
+	# Validate that every step in the path is actually walkable
+	# This prevents paths through terrain that should be blocked
+	for step_pos in path:
+		if not is_position_walkable(step_pos):
+			print("Warning: Generated path contains non-walkable tile at ", step_pos, " - rejecting path")
+			return []
+	
 	# Filter by max_cost if specified
 	if max_cost != -1 and path.size() > max_cost:
 		path = path.slice(0, max_cost)
@@ -258,7 +315,38 @@ func debug_print_tile_info(grid_position: Vector2i) -> void:
 			print("Terrain: ", tile_data.terrain)
 		else:
 			print("No tile data found")
-	print("========================") 
+	
+	# Also check A* grid state
+	if astar_initialized:
+		var astar_pos = _grid_to_astar_coords(grid_position)
+		print("A* coordinates: ", astar_pos)
+		print("A* solid: ", astar_grid.is_point_solid(astar_pos))
+	else:
+		print("A* not initialized")
+	
+	print("========================")
+
+func debug_test_pathfinding(from: Vector2i, to: Vector2i) -> void:
+	"""Debug function to test pathfinding between two positions"""
+	print("=== Testing Pathfinding from ", from, " to ", to, " ===")
+	
+	print("From position walkable: ", is_position_walkable(from))
+	print("To position walkable: ", is_position_walkable(to))
+	
+	var path = find_path(from, to)
+	if path.size() > 0:
+		print("Path found with ", path.size(), " steps: ", path)
+		print("Validating each step:")
+		for i in range(path.size()):
+			var step = path[i]
+			var walkable = is_position_walkable(step)
+			print("  Step ", i + 1, ": ", step, " - Walkable: ", walkable)
+			if not walkable:
+				print("  ERROR: Non-walkable step detected!")
+	else:
+		print("No path found")
+	
+	print("================================") 
 
 func show_grid_borders() -> void:
 	"""Display borders on all valid grid tiles"""
@@ -284,14 +372,24 @@ func toggle_grid_borders() -> void:
 		show_grid_borders()
 
 func _create_all_grid_borders() -> void:
-	"""Create border visuals for all valid grid tiles"""
+	"""Create border visuals for tiles that actually exist in the tilemap"""
 	_clear_grid_borders()
 	
+	# Only create borders for tiles that actually have tile data
 	for x in range(-grid_width/2, grid_width/2):
 		for y in range(-grid_height/2, grid_height/2):
 			var grid_pos = Vector2i(x, y)
-			if is_position_valid(grid_pos):
+			if _has_tile_data(grid_pos):
 				_create_grid_border_tile(grid_pos)
+
+func _has_tile_data(grid_position: Vector2i) -> bool:
+	"""Check if a tile actually exists at the given position"""
+	if not tilemap_layer or not is_position_valid(grid_position):
+		return false
+	
+	# Get tile data at position
+	var tile_data: TileData = tilemap_layer.get_cell_tile_data(grid_position)
+	return tile_data != null
 
 func _create_grid_border_tile(grid_position: Vector2i) -> void:
 	"""Create a border visual at a specific grid position"""
@@ -325,8 +423,8 @@ func _create_grid_border_tile(grid_position: Vector2i) -> void:
 	])
 	
 	outline.points = outline_points
-	outline.width = 1.0
-	outline.default_color = Color(0.4, 0.4, 0.4, 0.6)  # Semi-transparent gray
+	outline.width = 0.5
+	outline.default_color = Color(0.2, 0.2, 0.2, 1)  # Darker semi-transparent gray
 	outline.z_index = 0
 	
 	border.add_child(outline)

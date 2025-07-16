@@ -410,3 +410,14 @@ text = "End Turn"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Give Up"
+
+[node name="GiveUpConfirmationDialog" type="ConfirmationDialog" parent="UILayer/MainUI"]
+title = "Give Up"
+initial_position = 2
+size = Vector2i(400, 150)
+ok_button_text = "Give Up"
+dialog_text = "Are you sure you want to give up and return to the main menu?
+
+All progress in this run will be lost."
+dialog_autowrap = true
+cancel_button_text = "Continue Playing"

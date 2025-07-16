@@ -8,10 +8,12 @@ extends CharacterBody2D
 @export var max_health_points: int = GameConstants.DEFAULT_HEALTH_POINTS
 @export var max_movement_points: int = GameConstants.DEFAULT_MOVEMENT_POINTS
 @export var max_action_points: int = GameConstants.DEFAULT_ACTION_POINTS
+@export var base_initiative: int = GameConstants.DEFAULT_INITIATIVE
 
 var current_health_points: int = GameConstants.DEFAULT_HEALTH_POINTS
 var current_movement_points: int = GameConstants.DEFAULT_MOVEMENT_POINTS
 var current_action_points: int = GameConstants.DEFAULT_ACTION_POINTS
+var current_initiative: int = GameConstants.DEFAULT_INITIATIVE
 
 # Grid position
 var grid_position: Vector2i = Vector2i.ZERO
@@ -57,6 +59,7 @@ func _initialize_stats() -> void:
 	current_health_points = max_health_points
 	current_movement_points = max_movement_points
 	current_action_points = max_action_points
+	current_initiative = base_initiative
 	
 	# Emit initial stat updates
 	_emit_stat_updates()
@@ -73,6 +76,7 @@ func _setup_animation_signals() -> void:
 
 func _emit_stat_updates() -> void:
 	"""Emit all stat update signals for UI"""
+	print("DEBUG: ", character_type, " emitting stat updates - HP: ", current_health_points, "/", max_health_points, " MP: ", current_movement_points, "/", max_movement_points, " AP: ", current_action_points, "/", max_action_points)
 	health_changed.emit(current_health_points, max_health_points)
 	movement_points_changed.emit(current_movement_points, max_movement_points)
 	action_points_changed.emit(current_action_points, max_action_points)
@@ -280,15 +284,19 @@ func _on_movement_complete() -> void:
 
 func end_turn() -> void:
 	"""End character's turn and refresh resources"""
+	print("DEBUG: ", character_type, " ending turn - current MP: ", current_movement_points, " current AP: ", current_action_points)
 	_refresh_resources()
 	turn_ended.emit()
-	print("Turn ended - Resources refreshed")
+	print("DEBUG: ", character_type, " turn ended - new MP: ", current_movement_points, " new AP: ", current_action_points)
 
 func _refresh_resources() -> void:
 	"""Refresh MP and AP to maximum values"""
+	print("DEBUG: ", character_type, " refreshing resources - before: MP=", current_movement_points, " AP=", current_action_points)
 	current_movement_points = max_movement_points
 	current_action_points = max_action_points
+	print("DEBUG: ", character_type, " refreshing resources - after: MP=", current_movement_points, " AP=", current_action_points)
 	_emit_stat_updates()
+	print("DEBUG: ", character_type, " emitted stat updates")
 
 func set_grid_position(new_position: Vector2i) -> void:
 	"""Set the character's grid position (for initial placement)"""
@@ -321,10 +329,11 @@ func _handle_death() -> void:
 
 func get_stats_summary() -> String:
 	"""Get a formatted string of current character stats"""
-	return "HP: %d/%d | MP: %d/%d | AP: %d/%d" % [
+	return "HP: %d/%d | MP: %d/%d | AP: %d/%d | Init: %d" % [
 		current_health_points, max_health_points,
 		current_movement_points, max_movement_points,
-		current_action_points, max_action_points
+		current_action_points, max_action_points,
+		current_initiative
 	]
 
 func set_facing_direction(direction: GameConstants.Direction) -> void:

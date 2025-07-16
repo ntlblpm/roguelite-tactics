@@ -1,18 +1,28 @@
 class_name GameController
 extends Node2D
 
-## Main game controller that coordinates all systems
-## Manages the integration between grid, turns, characters, and UI
+## Main game controller that coordinates all systems for multiplayer
+## Manages the integration between grid, turns, characters, networking, and UI
 
-# Scene references
+# Scene references for all character classes
 @export var swordsman_scene: PackedScene = preload("res://players/swordsman/Swordsman.tscn")
+@export var archer_scene: PackedScene = preload("res://players/archer/Archer.tscn")
+@export var pyromancer_scene: PackedScene = preload("res://players/pyromancer/Pyromancer.tscn")
 
 # System managers
 var grid_manager: GridManager
 var turn_manager: TurnManager
 
-# Game entities
-var swordsman: SwordsmanCharacter
+# Game entities - now supports multiple players
+var player_characters: Dictionary = {} # peer_id -> BaseCharacter
+var current_player_id: int = -1
+
+# Starting positions for players
+var starting_positions: Array[Vector2i] = [
+	Vector2i(0, 0),    # Player 1
+	Vector2i(-2, 2),   # Player 2
+	Vector2i(2, -2)    # Player 3
+]
 
 # UI references
 @onready var combat_ui: Control = $CombatUI
@@ -23,15 +33,29 @@ var hp_text: Label
 var ap_text: Label
 var mp_text: Label
 var end_turn_button: Button
+var give_up_button: Button
 var chat_panel: ChatPanel
+
+# Turn order UI elements
+var current_entity_name: Label
+var current_entity_hp: Label
+var current_entity_status: Label
+var turn_order_panel: VBoxContainer
+var turn_order_displays: Array[Control] = []
+
+# Confirmation modal for Give up
+var give_up_confirmation_dialog: AcceptDialog
+
+# Multiplayer spawner for characters
+@onready var character_spawner: MultiplayerSpawner = $CharacterSpawner
 
 func _ready() -> void:
 	_initialize_systems()
 	_setup_ui_references()
-	_create_swordsman()
-	_connect_systems()
+	_setup_multiplayer()
+	_initialize_multiplayer_game()
 	
-	print("Game initialized successfully!")
+	print("Multiplayer game initialized successfully!")
 
 func _initialize_systems() -> void:
 	"""Initialize core game systems"""
@@ -57,28 +81,119 @@ func _setup_ui_references() -> void:
 		
 		# Get control elements
 		end_turn_button = combat_ui.get_node("UILayer/MainUI/FightControls/ButtonContainer/EndTurnBtn")
+		give_up_button = combat_ui.get_node("UILayer/MainUI/FightControls/ButtonContainer/GiveUpBtn")
 		chat_panel = combat_ui.get_node("UILayer/MainUI/ChatPanel")
+		
+		# Get turn order UI elements
+		turn_order_panel = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel")
+		current_entity_name = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityName")
+		current_entity_hp = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityHP")
+		current_entity_status = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityStatus")
+		
+		# Get confirmation dialog
+		give_up_confirmation_dialog = combat_ui.get_node("UILayer/MainUI/GiveUpConfirmationDialog")
 		
 		print("UI references setup complete")
 
-func _create_swordsman() -> void:
-	"""Create and setup the swordsman character"""
-	# Instantiate swordsman
-	swordsman = swordsman_scene.instantiate() as SwordsmanCharacter
-	swordsman.name = "Swordsman"
+func _setup_multiplayer() -> void:
+	"""Setup multiplayer spawner and networking"""
+	if not character_spawner:
+		character_spawner = MultiplayerSpawner.new()
+		character_spawner.name = "CharacterSpawner"
+		add_child(character_spawner)
 	
-	# Position swordsman at center of grid
-	var start_position: Vector2i = Vector2i(0, 0)
-	swordsman.grid_position = start_position
-	swordsman.target_grid_position = start_position
+	# Configure the spawner
+	character_spawner.spawn_path = NodePath("CombatArea")
+	character_spawner.add_spawnable_scene("res://players/swordsman/Swordsman.tscn")
+	character_spawner.add_spawnable_scene("res://players/archer/Archer.tscn") 
+	character_spawner.add_spawnable_scene("res://players/pyromancer/Pyromancer.tscn")
+	
+	print("Multiplayer spawner setup complete")
+
+func _initialize_multiplayer_game() -> void:
+	"""Initialize the multiplayer game based on NetworkManager data"""
+	if not NetworkManager or not NetworkManager.is_connected:
+		print("ERROR: Cannot start game - not connected to a network")
+		return
+	
+	# Get player data from NetworkManager
+	var players = NetworkManager.get_players_list()
+	
+	if NetworkManager.is_host:
+		# Convert PlayerInfo objects to dictionaries for RPC transmission
+		var players_data: Array = []
+		for player_info in players:
+			players_data.append({
+				"peer_id": player_info.peer_id,
+				"player_name": player_info.player_name,
+				"selected_class": player_info.selected_class,
+				"class_levels": player_info.class_levels
+			})
+		
+		# Host spawns all characters
+		_spawn_all_characters.rpc(players_data)
+	
+	# Wait a frame for spawning to complete, then connect systems
+	await get_tree().process_frame
+	_connect_systems()
+
+@rpc("authority", "call_local", "reliable")
+func _spawn_all_characters(players_data: Array) -> void:
+	"""Spawn characters for all players (called by host)"""
+	print("=== SPAWNING CHARACTERS ===")
+	print("Spawning characters for ", players_data.size(), " players")
+	print("Player data received: ", players_data)
+	
+	for i in range(players_data.size()):
+		var player_data = players_data[i]
+		var position_index = i % starting_positions.size()
+		var start_position = starting_positions[position_index]
+		
+		print("Processing player ", i + 1, ": ", player_data)
+		_spawn_character(player_data.peer_id, player_data.selected_class, start_position)
+	
+	print("=== SPAWNING COMPLETE ===")
+	print("Total characters spawned: ", player_characters.size())
+
+func _spawn_character(peer_id: int, character_class: String, position: Vector2i) -> void:
+	"""Spawn a character for a specific player"""
+	var character_scene: PackedScene
+	
+	# Select the appropriate scene based on class
+	match character_class:
+		"Swordsman":
+			character_scene = swordsman_scene
+		"Archer":
+			character_scene = archer_scene
+		"Pyromancer":
+			character_scene = pyromancer_scene
+		_:
+			print("Unknown class: ", character_class, " defaulting to Swordsman")
+			character_scene = swordsman_scene
+	
+	# Instantiate the character
+	var character = character_scene.instantiate() as BaseCharacter
+	character.name = character_class + "_" + str(peer_id)
+	
+	# Set multiplayer authority
+	character.set_multiplayer_authority(peer_id)
+	
+	# Position character
+	character.grid_position = position
+	character.target_grid_position = position
 	
 	# Add to scene
-	$CombatArea.add_child(swordsman)
+	$CombatArea.add_child(character)
+	
+	# Store reference
+	player_characters[peer_id] = character
 	
 	# Ensure character renders above movement highlights
-	swordsman.z_index = 2
+	character.z_index = 2
 	
-	print("Swordsman created at grid position: ", start_position)
+	print("Spawned ", character_class, " for peer ", peer_id, " at position ", position)
+
+
 
 func _connect_systems() -> void:
 	"""Connect all systems together"""
@@ -86,27 +201,58 @@ func _connect_systems() -> void:
 	if tilemap_layer:
 		grid_manager.set_tilemap_layer(tilemap_layer)
 	
-	# Set grid manager reference in swordsman
-	if swordsman:
-		swordsman.grid_manager = grid_manager
-		
-		# Position swordsman in world coordinates
-		swordsman.global_position = grid_manager.grid_to_world(swordsman.grid_position)
-		
-		# Connect character signals to UI updates
-		swordsman.health_changed.connect(_on_health_changed)
-		swordsman.movement_points_changed.connect(_on_movement_points_changed)
-		swordsman.action_points_changed.connect(_on_action_points_changed)
-		swordsman.character_selected.connect(_on_character_selected)
-		swordsman.movement_completed.connect(_on_movement_completed)
+	# Setup all player characters
+	print("=== CONNECTING SYSTEMS ===")
+	print("Player characters dictionary size: ", player_characters.size())
+	print("Player characters: ", player_characters.keys())
 	
-	# Connect grid manager tile clicks to swordsman movement
+	var character_list: Array[BaseCharacter] = []
+	for peer_id in player_characters:
+		var character = player_characters[peer_id]
+		print("Processing character for peer ", peer_id, ": ", character.character_type, " at ", character.grid_position)
+		
+		# Set grid manager reference
+		character.grid_manager = grid_manager
+		
+		# Position character in world coordinates
+		character.global_position = grid_manager.grid_to_world(character.grid_position)
+		
+		# Connect character signals to UI updates (only for local player)
+		if peer_id == multiplayer.get_unique_id():
+			current_player_id = peer_id
+			character.health_changed.connect(_on_health_changed)
+			character.movement_points_changed.connect(_on_movement_points_changed)
+			character.action_points_changed.connect(_on_action_points_changed)
+			character.character_selected.connect(_on_character_selected)
+			character.movement_completed.connect(_on_movement_completed)
+		
+		character_list.append(character)
+	
+	print("Character list size: ", character_list.size())
+	
+	# Connect grid manager tile clicks to character movement (only for local player)
 	if grid_manager:
 		grid_manager.tile_clicked.connect(_on_tile_clicked)
 	
-	# Initialize turn manager
-	if turn_manager and swordsman and end_turn_button and chat_panel:
-		turn_manager.initialize(swordsman, end_turn_button, chat_panel)
+	# Initialize turn manager with all characters
+	if turn_manager and character_list.size() > 0 and end_turn_button and chat_panel:
+		turn_manager.initialize_multiplayer(character_list, end_turn_button, chat_panel)
+		
+		# Connect turn manager signals for UI updates
+		turn_manager.turn_started.connect(_on_turn_started)
+		turn_manager.turn_ended.connect(_on_turn_ended)
+		
+		# Initialize turn order UI immediately to hide dummy data
+		_hide_static_next_entity_panels()
+		_update_turn_order_ui()
+	
+	# Connect Give up button and confirmation dialog
+	if give_up_button:
+		give_up_button.pressed.connect(_on_give_up_pressed)
+	
+	if give_up_confirmation_dialog:
+		give_up_confirmation_dialog.confirmed.connect(_on_give_up_confirmed)
+		give_up_confirmation_dialog.canceled.connect(_on_give_up_canceled)
 	
 	# Show grid borders by default
 	if grid_manager:
@@ -114,63 +260,306 @@ func _connect_systems() -> void:
 		if chat_panel:
 			chat_panel.add_system_message("Grid borders enabled - Press G to toggle")
 	
-	print("All systems connected")
+	print("All systems connected for ", player_characters.size(), " players")
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Update HP display when character health changes"""
+	# Only update UI for the local player's character
+	var sender_character = get_current_player_character()
+	if not sender_character:
+		return
+	
+	# Update HP text only if this is the local player's character
 	if hp_text:
 		hp_text.text = "%d/%d" % [current, maximum]
 
 func _on_movement_points_changed(current: int, maximum: int) -> void:
-	"""Update MP display when movement points change"""
+	## Update MP display when movement points change
+	print("DEBUG: GameController received movement_points_changed signal - ", current, "/", maximum)
+	
+	# Only update UI for the local player's character
+	var sender_character = get_current_player_character()
+	if not sender_character:
+		return
+	
+	# Update MP text only if this is the local player's character
 	if mp_text:
 		mp_text.text = "%d/%d" % [current, maximum]
+		print("DEBUG: Updated MP text to: ", mp_text.text)
+	else:
+		print("DEBUG: mp_text is null - UI not connected properly")
 	
-	# Update movement highlights when MP changes
-	if grid_manager and swordsman and current > 0:
-		grid_manager.highlight_movement_range(swordsman.grid_position, current)
+	# Update movement highlights only if it's the local player's turn
+	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and current > 0:
+		var current_turn_character = turn_manager.get_current_character()
+		if current_turn_character:
+			grid_manager.highlight_movement_range(current_turn_character.grid_position, current)
 	elif grid_manager:
-		# Clear highlights if no movement points remaining
+		# Clear highlights if no movement points remaining or not local player's turn
 		grid_manager.clear_movement_highlights()
-		if chat_panel:
+		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and current <= 0:
 			chat_panel.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_action_points_changed(current: int, maximum: int) -> void:
-	"""Update AP display when action points change"""
+	## Update AP display when action points change
+	print("DEBUG: GameController received action_points_changed signal - ", current, "/", maximum)
+	
+	# Only update UI for the local player's character
+	var sender_character = get_current_player_character()
+	if not sender_character:
+		return
+	
+	# Update AP text only if this is the local player's character
 	if ap_text:
 		ap_text.text = "%d/%d" % [current, maximum]
+		print("DEBUG: Updated AP text to: ", ap_text.text)
+	else:
+		print("DEBUG: ap_text is null - UI not connected properly")
 
 func _on_character_selected() -> void:
 	"""Handle when the character is selected"""
-	if grid_manager and swordsman:
-		# Show movement range when selected
-		grid_manager.highlight_movement_range(swordsman.grid_position, swordsman.current_movement_points)
-		
-		if chat_panel:
-			chat_panel.add_system_message("Swordsman selected - Movement range highlighted")
+	# Only highlight movement for the local player's turn
+	if grid_manager and turn_manager and turn_manager.is_local_player_turn():
+		var current_turn_character = turn_manager.get_current_character()
+		if current_turn_character:
+			# Show movement range when selected
+			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points)
+			
+			if chat_panel:
+				chat_panel.add_system_message(current_turn_character.character_type + " selected - Movement range highlighted")
 
 func _on_tile_clicked(grid_position: Vector2i) -> void:
 	"""Handle when a tile is clicked"""
-	if not swordsman or not turn_manager or not turn_manager.is_character_turn_active():
+	# Only allow input if it's the local player's turn
+	if not turn_manager or not turn_manager.is_character_turn_active() or not turn_manager.is_local_player_turn():
+		if turn_manager and turn_manager.is_character_turn_active() and not turn_manager.is_local_player_turn():
+			var current_turn_character = turn_manager.get_current_character()
+			if current_turn_character and chat_panel:
+				var player_name = _get_player_name_for_character(current_turn_character)
+				chat_panel.add_system_message("It's " + player_name + "'s turn, not yours!")
 		return
 	
-	# Check if clicking on swordsman (selection)
-	if grid_position == swordsman.grid_position:
-		swordsman.character_selected.emit()
+	# Get the character whose turn it is (which must be ours due to the checks above)
+	var current_turn_character = turn_manager.get_current_character()
+	if not current_turn_character:
 		return
 	
-	# Attempt to move swordsman to clicked position
-	if swordsman.attempt_move_to(grid_position):
+	# Check if clicking on current character (selection)
+	if grid_position == current_turn_character.grid_position:
+		current_turn_character.character_selected.emit()
+		return
+	
+	# Attempt to move character to clicked position
+	if current_turn_character.attempt_move_to(grid_position):
 		if chat_panel:
-			chat_panel.add_combat_message("Swordsman moved to " + str(grid_position))
+			chat_panel.add_combat_message(current_turn_character.character_type + " moved to " + str(grid_position))
 
 func _on_movement_completed(new_position: Vector2i) -> void:
 	"""Handle when the character's movement is completed"""
-	if grid_manager and swordsman:
-		# Immediately update movement range from the new position
-		grid_manager.highlight_movement_range(new_position, swordsman.current_movement_points)
-		if chat_panel:
-			chat_panel.add_system_message("Movement range updated from new position: " + str(new_position))
+	# Only update movement highlights if it's the local player's turn
+	if grid_manager and turn_manager and turn_manager.is_local_player_turn():
+		var current_turn_character = turn_manager.get_current_character()
+		if current_turn_character:
+			# Immediately update movement range from the new position
+			grid_manager.highlight_movement_range(new_position, current_turn_character.current_movement_points)
+			if chat_panel:
+				chat_panel.add_system_message("Movement range updated from new position: " + str(new_position))
+
+func _on_turn_started(character: BaseCharacter) -> void:
+	"""Handle when a turn starts - update turn order UI and display current character stats"""
+	_update_turn_order_ui()
+	
+	# Update the stat display to show the current character's stats (if it's the local player's turn)
+	if turn_manager and turn_manager.is_local_player_turn():
+		var current_turn_character = turn_manager.get_current_character()
+		if current_turn_character:
+			# Manually update the stat displays to show the current character's stats
+			if hp_text:
+				hp_text.text = "%d/%d" % [current_turn_character.current_health_points, current_turn_character.max_health_points]
+			if mp_text:
+				mp_text.text = "%d/%d" % [current_turn_character.current_movement_points, current_turn_character.max_movement_points]
+			if ap_text:
+				ap_text.text = "%d/%d" % [current_turn_character.current_action_points, current_turn_character.max_action_points]
+			
+			# Show movement range for the current character
+			if grid_manager and current_turn_character.current_movement_points > 0:
+				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points)
+	else:
+		# If it's not the local player's turn, clear movement highlights
+		if grid_manager:
+			grid_manager.clear_movement_highlights()
+
+func _on_turn_ended(character: BaseCharacter) -> void:
+	"""Handle when a turn ends"""
+	pass  # Turn order UI will be updated when next turn starts
+
+func _update_turn_order_ui() -> void:
+	"""Update the turn order UI to show all characters in initiative order"""
+	print("=== UPDATING TURN ORDER UI ===")
+	if not turn_manager or not turn_order_panel:
+		print("ERROR: Missing turn_manager or turn_order_panel")
+		return
+	
+	# Clear existing dynamic displays
+	_clear_turn_order_displays()
+	
+	# Hide the static NextEntity panels since we're creating dynamic ones
+	_hide_static_next_entity_panels()
+	
+	# Get all characters in turn order
+	var characters_in_order = turn_manager.get_characters_in_turn_order()
+	var current_character = turn_manager.get_current_character()
+	var current_character_index = turn_manager.current_character_index
+	
+	print("Characters in turn order: ", characters_in_order.size())
+	for i in range(characters_in_order.size()):
+		var character = characters_in_order[i]
+		print("Character ", i, ": ", character.character_type, " (Authority: ", character.get_multiplayer_authority(), ")")
+	
+	print("Current character index: ", current_character_index)
+	
+	# Update the main current entity display
+	if current_character:
+		print("Updating current entity display for: ", current_character.character_type)
+		_update_current_entity_display(current_character)
+	
+	# Create displays for all characters in turn order
+	for i in range(characters_in_order.size()):
+		var character = characters_in_order[i]
+		var is_current = (i == current_character_index and turn_manager.is_turn_active)
+		
+		print("Processing character ", i, ": ", character.character_type, " (is_current: ", is_current, ")")
+		
+		# Skip the current character as it's already shown in the CurrentEntity panel
+		if is_current:
+			print("Skipping current character")
+			continue
+			
+		print("Creating display for: ", character.character_type)
+		var character_display = _create_character_turn_display(character, i, current_character_index)
+		turn_order_panel.add_child(character_display)
+		turn_order_displays.append(character_display)
+	
+	print("Turn order UI update complete. Dynamic displays created: ", turn_order_displays.size())
+
+func _get_player_name_for_character(character: BaseCharacter) -> String:
+	"""Get a display name for the character's player"""
+	var authority = character.get_multiplayer_authority()
+	
+	# Check NetworkManager for player name
+	if NetworkManager and NetworkManager.is_connected:
+		var players = NetworkManager.get_players_list()
+		for player_info in players:
+			if player_info.peer_id == authority:
+				return player_info.player_name
+	
+	# Fallback names
+	if authority == 1:
+		return "Host"
+	else:
+		return "Player " + str(authority)
+
+func _clear_turn_order_displays() -> void:
+	"""Clear all dynamic turn order displays"""
+	for display in turn_order_displays:
+		if display and is_instance_valid(display):
+			display.queue_free()
+	turn_order_displays.clear()
+
+func _hide_static_next_entity_panels() -> void:
+	"""Hide the static NextEntity panels since we're using dynamic ones"""
+	if turn_order_panel:
+		var next_entity1 = turn_order_panel.get_node_or_null("NextEntity1")
+		var next_entity2 = turn_order_panel.get_node_or_null("NextEntity2")
+		var next_entity3 = turn_order_panel.get_node_or_null("NextEntity3")
+		
+		if next_entity1:
+			next_entity1.visible = false
+		if next_entity2:
+			next_entity2.visible = false
+		if next_entity3:
+			next_entity3.visible = false
+
+func _update_current_entity_display(character: BaseCharacter) -> void:
+	"""Update the main current entity display"""
+	if current_entity_name:
+		var player_name = _get_player_name_for_character(character)
+		current_entity_name.text = player_name + " (" + character.character_type + ")"
+	
+	if current_entity_hp:
+		current_entity_hp.text = "HP: %d/%d" % [character.current_health_points, character.max_health_points]
+	
+	if current_entity_status:
+		# Check if it's the local player's turn
+		var is_local_turn = turn_manager.is_local_player_turn()
+		if is_local_turn:
+			current_entity_status.text = "YOUR TURN"
+			current_entity_status.modulate = Color.GREEN
+		else:
+			current_entity_status.text = "WAITING"
+			current_entity_status.modulate = Color.YELLOW
+
+func _create_character_turn_display(character: BaseCharacter, turn_index: int, current_index: int) -> Control:
+	"""Create a UI display for a character in the turn order"""
+	var panel = Panel.new()
+	panel.custom_minimum_size = Vector2(130, 40)
+	
+	var container = VBoxContainer.new()
+	container.anchors_preset = Control.PRESET_FULL_RECT
+	container.offset_left = 4
+	container.offset_top = 4
+	container.offset_right = -4
+	container.offset_bottom = -4
+	panel.add_child(container)
+	
+	var name_label = Label.new()
+	var player_name = _get_player_name_for_character(character)
+	name_label.text = player_name + " (" + character.character_type + ")"
+	name_label.add_theme_font_size_override("font_size", 10)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	container.add_child(name_label)
+	
+	var hp_label = Label.new()
+	hp_label.text = "HP: %d/%d" % [character.current_health_points, character.max_health_points]
+	hp_label.add_theme_font_size_override("font_size", 8)
+	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	container.add_child(hp_label)
+	
+	var init_label = Label.new()
+	init_label.text = "Init: %d" % character.current_initiative
+	init_label.add_theme_font_size_override("font_size", 8)
+	init_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	container.add_child(init_label)
+	
+	# Color code based on turn position
+	if turn_index == current_index + 1:
+		# Next to act
+		panel.modulate = Color(1.0, 1.0, 0.7)  # Light yellow
+	elif turn_index > current_index:
+		# Upcoming
+		panel.modulate = Color(0.9, 0.9, 0.9)  # Light gray
+	else:
+		# Already acted this round
+		panel.modulate = Color(0.7, 0.7, 0.7)  # Darker gray
+	
+	return panel
+
+func get_current_player_character() -> BaseCharacter:
+	"""Get the current player's character"""
+	if current_player_id != -1 and player_characters.has(current_player_id):
+		return player_characters[current_player_id]
+	return null
+
+func get_all_characters() -> Array[BaseCharacter]:
+	"""Get all player characters"""
+	var characters: Array[BaseCharacter] = []
+	for character in player_characters.values():
+		characters.append(character)
+	return characters
+
+func get_character_by_peer_id(peer_id: int) -> BaseCharacter:
+	"""Get character by peer ID"""
+	return player_characters.get(peer_id, null)
 
 func _input(event: InputEvent) -> void:
 	# Handle debug keys
@@ -187,46 +576,73 @@ func _input(event: InputEvent) -> void:
 
 func _debug_print_game_state() -> void:
 	"""Debug function to print current game state"""
-	print("\n=== GAME STATE DEBUG ===")
-	if swordsman:
-		print("Swordsman stats: ", swordsman.get_stats_summary())
-		print("Swordsman grid position: ", swordsman.grid_position)
-		print("Swordsman world position: ", swordsman.global_position)
+	print("\n=== MULTIPLAYER GAME STATE DEBUG ===")
+	var current_character = get_current_player_character()
+	if current_character:
+		print("Current character: ", current_character.character_type)
+		print("Current character stats: ", current_character.get_stats_summary())
+		print("Current character grid position: ", current_character.grid_position)
+		print("Current character world position: ", current_character.global_position)
+	
+	print("Total characters: ", player_characters.size())
+	for peer_id in player_characters:
+		var character = player_characters[peer_id]
+		print("Peer ", peer_id, ": ", character.character_type, " at ", character.grid_position)
 	
 	if turn_manager:
 		turn_manager.debug_print_turn_state()
 	
-	if grid_manager and swordsman:
-		grid_manager.debug_print_tile_info(swordsman.grid_position)
+	if grid_manager and current_character:
+		grid_manager.debug_print_tile_info(current_character.grid_position)
 	
-	print("========================\n")
+	print("=============================\n")
 
 func _debug_test_movement() -> void:
 	"""Debug function to test movement"""
-	if swordsman:
-		var test_position: Vector2i = Vector2i(swordsman.grid_position.x + 1, swordsman.grid_position.y)
+	var current_character = get_current_player_character()
+	if current_character:
+		var test_position: Vector2i = Vector2i(current_character.grid_position.x + 1, current_character.grid_position.y)
 		print("Testing movement to: ", test_position)
-		swordsman.attempt_move_to(test_position)
+		current_character.attempt_move_to(test_position)
 
 func _debug_test_damage() -> void:
-	"""Debug function to test damage"""
-	if swordsman:
-		print("Testing damage - Before: ", swordsman.current_health_points)
-		swordsman.take_damage(10)
-		print("After taking 10 damage: ", swordsman.current_health_points)
+	"""Debug function to test damage application"""
+	var current_character = get_current_player_character()
+	if current_character:
+		current_character.take_damage(10)
+		print("Applied 10 damage to current character")
 
 func _toggle_grid_borders() -> void:
-	"""Toggle grid border visibility"""
+	"""Debug function to toggle grid border visibility"""
 	if grid_manager:
 		grid_manager.toggle_grid_borders()
-		var state = "enabled" if grid_manager.grid_borders_visible else "disabled"
-		if chat_panel:
-			chat_panel.add_system_message("Grid borders " + state)
-		print("Grid borders ", state)
 
-func get_swordsman() -> SwordsmanCharacter:
-	"""Get reference to the swordsman character"""
-	return swordsman
+func _on_give_up_pressed() -> void:
+	"""Handle Give up button press - show confirmation dialog"""
+	if give_up_confirmation_dialog:
+		give_up_confirmation_dialog.popup_centered()
+		if chat_panel:
+			chat_panel.add_system_message("Give up confirmation dialog opened")
+
+func _on_give_up_confirmed() -> void:
+	"""Handle Give up confirmation - return to main menu"""
+	print("Player confirmed give up - returning to main menu")
+	
+	# Disconnect from multiplayer if connected
+	if NetworkManager and NetworkManager.is_connected:
+		NetworkManager.disconnect_from_network()
+	
+	# Add a system message before leaving
+	if chat_panel:
+		chat_panel.add_combat_message("Giving up and returning to main menu...")
+	
+	# Return to main menu
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+func _on_give_up_canceled() -> void:
+	"""Handle Give up cancellation - close dialog and continue playing"""
+	if chat_panel:
+		chat_panel.add_system_message("Give up canceled - continuing the fight!")
 
 func get_grid_manager() -> GridManager:
 	"""Get reference to the grid manager"""

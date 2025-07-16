@@ -49,11 +49,11 @@ layout_mode = 2
 
 [node name="HostRunButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-text = "HOST RUN"
+text = "HOST"
 
 [node name="JoinRunButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-text = "JOIN RUN"
+text = "JOIN"
 
 [node name="SanctumButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2

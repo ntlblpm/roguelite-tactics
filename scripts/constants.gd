@@ -16,6 +16,7 @@ enum Direction {
 const DEFAULT_HEALTH_POINTS: int = 100
 const DEFAULT_MOVEMENT_POINTS: int = 3
 const DEFAULT_ACTION_POINTS: int = 6
+const DEFAULT_INITIATIVE: int = 10
 
 # Grid and movement constants
 const GRID_TILE_SIZE: int = 64

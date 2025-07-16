@@ -1,6 +1,7 @@
-[gd_scene load_steps=1102 format=3 uid="uid://dhw4sx2qkwpgq"]
+[gd_scene load_steps=1103 format=3 uid="uid://dhw4sx2qkwpgq"]
 
 [ext_resource type="Texture2D" uid="uid://w8ia7k741ch7" path="res://assets/entities/archer/Attack1.png" id="1_1mvjd"]
+[ext_resource type="Script" uid="uid://b7adslhp2f43b" path="res://players/archer/archer.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bk7m1dop2mc5c" path="res://assets/entities/archer/Attack2.png" id="2_2nvke"]
 [ext_resource type="Texture2D" uid="uid://8mh8wt0f24wn" path="res://assets/entities/archer/Attack3.png" id="3_3ovlf"]
 [ext_resource type="Texture2D" uid="uid://coys3o2bsuilc" path="res://assets/entities/archer/Attack4.png" id="4_4pwmg"]
@@ -7950,6 +7951,7 @@ polygon = PackedVector2Array(-9, -1, -9, -15, 10, -15, 10, 1, 1, 3)
 
 [node name="Archer" type="CharacterBody2D"]
 scale = Vector2(0.5, 0.5)
+script = ExtResource("1_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)

@@ -6,4 +6,7 @@ extends "res://scripts/base_character.gd"
 
 func _ready() -> void:
 	character_type = "Swordsman"
+	# Swordsmen have balanced initiative - medium value
+	base_initiative = 11
+	current_initiative = base_initiative
 	super()

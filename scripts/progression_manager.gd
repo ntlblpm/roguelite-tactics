@@ -1,4 +1,3 @@
-class_name ProgressionManager
 extends Node
 
 ## Manages player progression including class levels, experience, and upgrade trees

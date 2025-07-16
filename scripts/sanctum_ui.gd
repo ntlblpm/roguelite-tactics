@@ -5,7 +5,7 @@ extends Control
 ## Handles tab switching, upgrade purchasing, and progression display
 
 # References to progression system
-var progression_manager: Node
+var progression_manager
 
 # UI References
 @onready var tab_container: TabContainer = $MainContainer/TabContainer
@@ -29,19 +29,21 @@ func _ready() -> void:
 	_setup_initial_display()
 
 func _setup_progression_manager() -> void:
-	"""Create and setup the progression manager"""
-	var progression_script = load("res://scripts/progression_manager.gd")
-	if progression_script:
-		progression_manager = progression_script.new()
-		progression_manager.name = "ProgressionManager"
-		add_child(progression_manager)
-		
+	"""Setup connection to the progression manager autoload"""
+	# Use the global ProgressionManager autoload
+	progression_manager = ProgressionManager
+	
+	if progression_manager:
 		# Connect progression signals
 		progression_manager.experience_gained.connect(_on_experience_gained)
 		progression_manager.level_gained.connect(_on_level_gained)
 		progression_manager.upgrade_purchased.connect(_on_upgrade_purchased)
+		print("Connected to ProgressionManager autoload")
 	else:
-		print("Error: Could not load progression manager script")
+		print("Error: ProgressionManager autoload not found")
+	
+	# Load initial data
+	_refresh_current_display()
 
 func _connect_signals() -> void:
 	"""Connect UI signals"""

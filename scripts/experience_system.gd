@@ -9,11 +9,11 @@ const BASIC_ENEMY_EXPERIENCE: int = 25
 const ELITE_ENEMY_EXPERIENCE: int = 50
 const BOSS_ENEMY_EXPERIENCE: int = 100  # Bosses give double the normal fight experience
 
-# Class that participated in the fight (for single-player, this is predetermined)
+# Class that participated in the fight (determined by player's selected class)
 var participating_class: String = "Swordsman"  # Default, can be set before combat
 
 # Reference to progression manager (will be set when needed)
-var progression_manager: Node = null
+var progression_manager = null
 
 func _ready() -> void:
 	# Find or create progression manager
@@ -78,25 +78,14 @@ func _award_experience_to_class(character_class: String, amount: int) -> void:
 		print("Warning: Could not award experience - progression manager not available")
 
 func _find_or_create_progression_manager() -> void:
-	"""Find existing progression manager or create a new one"""
-	# Try to find in scene tree first
-	progression_manager = get_tree().get_first_node_in_group("progression_manager")
+	"""Connect to the progression manager autoload"""
+	# Use the global ProgressionManager autoload
+	progression_manager = ProgressionManager
 	
-	if progression_manager == null:
-		# Look for it by class name in current scene
-		var current_scene: Node = get_tree().current_scene
-		progression_manager = _find_node_by_type(current_scene, "ProgressionManager")
-	
-	if progression_manager == null:
-		print("Creating new progression manager for experience system")
-		# Create a new one (load the script directly)
-		var progression_script = load("res://scripts/progression_manager.gd")
-		if progression_script:
-			progression_manager = progression_script.new()
-			progression_manager.name = "ProgressionManager"
-			add_child(progression_manager)
-		else:
-			print("Error: Could not load progression manager script")
+	if progression_manager:
+		print("Connected to ProgressionManager autoload")
+	else:
+		print("Error: ProgressionManager autoload not found")
 
 func _find_node_by_type(node: Node, type_name: String) -> Node:
 	"""Recursively search for a node by its class name"""
