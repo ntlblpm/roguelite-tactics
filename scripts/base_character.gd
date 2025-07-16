@@ -137,17 +137,9 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 
 func _calculate_path_cost(path: Array[Vector2i]) -> int:
 	"""Calculate the total movement cost of a path"""
-	if path.size() == 0:
-		return 0
-	
-	var total_cost: int = 0
-	var current_pos: Vector2i = grid_position
-	
-	for next_pos in path:
-		total_cost += abs(next_pos.x - current_pos.x) + abs(next_pos.y - current_pos.y)
-		current_pos = next_pos
-	
-	return total_cost
+	# Since each step in the path costs exactly 1 movement point,
+	# the total cost is simply the number of steps
+	return path.size()
 
 func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	"""Execute movement along a path"""

@@ -12,13 +12,13 @@ extends Node2D
 # References to TileMapLayer
 @onready var tilemap_layer: TileMapLayer = null
 
-# A* pathfinding
-var astar_grid: AStarGrid2D = AStarGrid2D.new()
-var astar_initialized: bool = false
-
 # Visual feedback
 var movement_highlights: Array[Vector2i] = []
 var highlight_tiles_parent: Node2D = null
+var current_hovered_tile: Vector2i = Vector2i(-999, -999)  # Track currently hovered tile
+var current_path_highlights: Array[Vector2i] = []  # Track currently highlighted path
+var path_highlights_parent: Node2D = null  # Separate parent for path highlights
+var movement_source_position: Vector2i = Vector2i.ZERO  # Source position for current movement range
 
 # Grid border visualization
 var grid_borders_parent: Node2D = null
@@ -26,17 +26,22 @@ var grid_borders_visible: bool = false
 
 # Signals
 signal tile_clicked(grid_position: Vector2i)
+signal tile_hovered(grid_position: Vector2i)  # New signal for tile hover events
 
 func _ready() -> void:
 	_setup_highlight_system()
 	_setup_grid_borders_system()
-	_initialize_astar_grid()
 
 func _setup_highlight_system() -> void:
 	"""Setup the visual highlight system for valid movement tiles"""
 	highlight_tiles_parent = Node2D.new()
 	highlight_tiles_parent.name = "MovementHighlights"
 	add_child(highlight_tiles_parent)
+	
+	# Create separate parent for path highlights to render them on top
+	path_highlights_parent = Node2D.new()
+	path_highlights_parent.name = "PathHighlights"
+	add_child(path_highlights_parent)
 
 func _setup_grid_borders_system() -> void:
 	"""Setup the visual grid borders system for all tiles"""
@@ -44,56 +49,17 @@ func _setup_grid_borders_system() -> void:
 	grid_borders_parent.name = "GridBorders"
 	add_child(grid_borders_parent)
 
-func _initialize_astar_grid() -> void:
-	"""Initialize the A* grid for pathfinding"""
-	if astar_initialized:
-		return
-	
-	# Set up the grid size (AStarGrid2D uses 0-based indexing)
-	astar_grid.size = Vector2i(grid_width, grid_height)
-	astar_grid.cell_size = Vector2(1, 1)
-	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
-	
-	astar_grid.update()
-	_update_walkable_points()
-	
-	astar_initialized = true
-
-
-func _grid_to_astar_coords(grid_pos: Vector2i) -> Vector2i:
-	"""Convert game grid coordinates to A* grid coordinates"""
-	return Vector2i(grid_pos.x + grid_width/2, grid_pos.y + grid_height/2)
-
-func _astar_to_grid_coords(astar_pos: Vector2i) -> Vector2i:
-	"""Convert A* grid coordinates to game grid coordinates"""
-	return Vector2i(astar_pos.x - grid_width/2, astar_pos.y - grid_height/2)
-
-func _update_walkable_points() -> void:
-	"""Update which points are walkable in the A* grid"""
-	for x in range(-grid_width/2, grid_width/2):
-		for y in range(-grid_height/2, grid_height/2):
-			var grid_pos = Vector2i(x, y)
-			var astar_pos = _grid_to_astar_coords(grid_pos)
-			var is_walkable = is_position_walkable(grid_pos)
-			astar_grid.set_point_solid(astar_pos, not is_walkable)
-
 func set_tilemap_layer(layer: TileMapLayer) -> void:
 	"""Set the reference to the TileMapLayer"""
 	tilemap_layer = layer
 	if tilemap_layer:
 		print("Grid manager connected to TileMapLayer")
-		_initialize_astar_grid()
 
 func refresh_pathfinding_grid() -> void:
-	"""Refresh the A* grid to match current tilemap state"""
-	if not astar_initialized:
-		print("Warning: Cannot refresh pathfinding grid - A* not initialized")
-		return
-	
-	print("Refreshing pathfinding grid to match current tilemap state")
-	_update_walkable_points()
-	astar_grid.update()
-	print("Pathfinding grid refresh completed")
+	"""Refresh the pathfinding grid to match current tilemap state"""
+	# With flood-fill pathfinding, this is essentially a no-op
+	# since we always check walkability in real-time during flood-fill
+	print("Pathfinding grid refresh completed (using flood-fill pathfinding)")
 
 func world_to_grid(world_position: Vector2) -> Vector2i:
 	"""Convert world coordinates to grid coordinates"""
@@ -157,31 +123,16 @@ func is_position_walkable(grid_position: Vector2i) -> bool:
 	return terrain == 0
 
 func get_valid_movement_positions(from_position: Vector2i, movement_range: int) -> Array[Vector2i]:
-	"""Get all valid positions within movement range from a starting position using pathfinding"""
-	var valid_positions: Array[Vector2i] = []
-	
-	if not astar_initialized:
-		return valid_positions
-	
-	# Check all positions in movement range
-	for x in range(-movement_range, movement_range + 1):
-		for y in range(-movement_range, movement_range + 1):
-			var check_pos: Vector2i = Vector2i(from_position.x + x, from_position.y + y)
-			var distance: int = abs(x) + abs(y)
-			
-			if distance > movement_range or distance == 0:
-				continue
-			
-			# Use pathfinding to check if position is reachable within movement range
-			var path: Array[Vector2i] = find_path(from_position, check_pos, movement_range)
-			if path.size() > 0:
-				valid_positions.append(check_pos)
-	
-	return valid_positions
+	"""Get all valid positions within movement range from a starting position using flood-fill pathfinding"""
+	var flood_fill_result = _flood_fill_pathfinding(from_position, movement_range)
+	return flood_fill_result.reachable_positions
 
 func highlight_movement_range(from_position: Vector2i, movement_range: int) -> void:
 	"""Visually highlight tiles within movement range"""
 	clear_movement_highlights()
+	
+	# Store the source position for path calculation
+	movement_source_position = from_position
 	
 	var valid_positions: Array[Vector2i] = get_valid_movement_positions(from_position, movement_range)
 	
@@ -207,11 +158,63 @@ func _create_highlight_tile(grid_position: Vector2i) -> void:
 	])
 	
 	highlight.polygon = diamond_points
-	highlight.color = Color(0, 0.9, 0, 0.9)  # Semi-transparent green with 90% opacity
+	highlight.color = Color(0, 0.9, 0, 0.3)  # Dimmed movement range tiles
 	highlight.position = grid_to_world(grid_position)
 	highlight.z_index = 1  # Render above tilemap but below characters
 	
+	# Store grid position as metadata for easy access
+	highlight.set_meta("grid_position", grid_position)
+	
 	highlight_tiles_parent.add_child(highlight)
+
+func _create_path_highlight_tile(grid_position: Vector2i, is_destination: bool = false) -> void:
+	"""Create a visual highlight for a path tile"""
+	var highlight: Polygon2D = Polygon2D.new()
+	
+	# Create diamond shape that matches isometric tile appearance
+	var half_width: float = tile_size.x * 0.45
+	var half_height: float = tile_size.y * 0.45
+	
+	# Define diamond vertices (clockwise from top)
+	var diamond_points: PackedVector2Array = PackedVector2Array([
+		Vector2(0, -half_height),           # Top
+		Vector2(half_width, 0),             # Right  
+		Vector2(0, half_height),            # Bottom
+		Vector2(-half_width, 0)             # Left
+	])
+	
+	highlight.polygon = diamond_points
+	
+	# Different colors for path vs destination
+	if is_destination:
+		highlight.color = Color(0, 0.9, 0, 0.9)  # Bright green for destination
+	else:
+		highlight.color = Color(0, 0.9, 0, 0.6)  # More transparent green for path tiles
+	
+	highlight.position = grid_to_world(grid_position)
+	highlight.z_index = 2  # Render above movement highlights
+	
+	path_highlights_parent.add_child(highlight)
+
+func _update_path_preview(destination: Vector2i) -> void:
+	"""Update the path preview to show route to destination"""
+	_clear_path_highlights()
+	
+	# Calculate path from source to destination
+	var path: Array[Vector2i] = find_path(movement_source_position, destination)
+	
+	if path.size() == 0:
+		return  # No valid path
+	
+	# Highlight each tile in the path
+	for i in range(path.size()):
+		var path_tile: Vector2i = path[i]
+		var is_destination: bool = (i == path.size() - 1)
+		_create_path_highlight_tile(path_tile, is_destination)
+	
+	current_path_highlights = path
+
+
 
 func clear_movement_highlights() -> void:
 	"""Remove all movement highlight visuals"""
@@ -219,11 +222,29 @@ func clear_movement_highlights() -> void:
 		for child in highlight_tiles_parent.get_children():
 			child.queue_free()
 	movement_highlights.clear()
+	current_hovered_tile = Vector2i(-999, -999)  # Reset hovered tile
+	_clear_path_highlights()  # Also clear path highlights
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var clicked_grid_pos: Vector2i = world_to_grid(get_global_mouse_position())
 		tile_clicked.emit(clicked_grid_pos)
+	
+	# Track mouse motion for path preview
+	if event is InputEventMouseMotion:
+		var mouse_grid_pos: Vector2i = world_to_grid(get_global_mouse_position())
+		
+		# Only update if we're hovering over a different tile
+		if mouse_grid_pos != current_hovered_tile:
+			current_hovered_tile = mouse_grid_pos
+			
+			# Show path preview if this tile is in the movement range
+			if mouse_grid_pos in movement_highlights:
+				tile_hovered.emit(mouse_grid_pos)
+				_update_path_preview(mouse_grid_pos)
+			else:
+				# Clear path preview if hovering outside movement range
+				_clear_path_highlights()
 	
 	# Debug keyboard shortcuts for testing pathfinding
 	if event is InputEventKey and event.pressed:
@@ -259,43 +280,107 @@ func _run_pathfinding_tests() -> void:
 
 
 func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector2i]:
-	"""Find a path from one position to another using A* pathfinding"""
-	if not astar_initialized:
+	"""Find a path from one position to another using flood-fill pathfinding"""
+	# Check if tilemap is available
+	if not tilemap_layer:
 		return []
 	
 	# Check if positions are valid and walkable
 	if not is_position_valid(from) or not is_position_valid(to) or not is_position_walkable(to):
 		return []
 	
-	# Convert to A* coordinate system
-	var astar_from = _grid_to_astar_coords(from)
-	var astar_to = _grid_to_astar_coords(to)
-	
-	# Use A* to find the path
-	var path_points: PackedVector2Array = astar_grid.get_point_path(astar_from, astar_to)
-	
-	if path_points.size() == 0:
+	# If trying to path to the same position, return empty path
+	if from == to:
 		return []
 	
-	# Convert to Array[Vector2i] and remove starting position
+	# Use flood-fill to find path and reachable positions
+	var movement_range = max_cost if max_cost != -1 else 999  # Use large number if no limit
+	var flood_fill_result = _flood_fill_pathfinding(from, movement_range)
+	
+	# Check if target is reachable
+	if to not in flood_fill_result.reachable_positions:
+		return []
+	
+	# Reconstruct path using parent tracking
 	var path: Array[Vector2i] = []
-	for i in range(1, path_points.size()):
-		var astar_pos = Vector2i(path_points[i])
-		var grid_pos = _astar_to_grid_coords(astar_pos)
-		path.append(grid_pos)
+	var current = to
 	
-	# Validate that every step in the path is actually walkable
-	# This prevents paths through terrain that should be blocked
-	for step_pos in path:
-		if not is_position_walkable(step_pos):
-			print("Warning: Generated path contains non-walkable tile at ", step_pos, " - rejecting path")
-			return []
+	# Follow parent chain backwards to build path
+	while current != from and flood_fill_result.parent_map.has(current):
+		path.push_front(current)
+		current = flood_fill_result.parent_map[current]
 	
-	# Filter by max_cost if specified
+	# Validate path length against max_cost
 	if max_cost != -1 and path.size() > max_cost:
-		path = path.slice(0, max_cost)
+		return []
 	
 	return path
+
+func _flood_fill_pathfinding(from_position: Vector2i, movement_range: int) -> Dictionary:
+	"""
+	Unified flood-fill algorithm for both pathfinding and movement range calculation
+	Returns: {
+		"reachable_positions": Array[Vector2i] - all positions within range
+		"parent_map": Dictionary - parent position for each reachable position (for path reconstruction)
+	}
+	"""
+	var reachable_positions: Array[Vector2i] = []
+	var parent_map: Dictionary = {}
+	var visited: Dictionary = {}
+	var queue: Array = []
+	
+	# Check if tilemap is available
+	if not tilemap_layer:
+		return {"reachable_positions": reachable_positions, "parent_map": parent_map}
+	
+	# Start flood-fill from the starting position with cost 0
+	queue.append({"position": from_position, "cost": 0, "parent": null})
+	visited[from_position] = 0
+	
+	# Directions for 4-directional movement (isometric grid)
+	var directions: Array[Vector2i] = [
+		Vector2i(1, 0),   # Right
+		Vector2i(-1, 0),  # Left  
+		Vector2i(0, 1),   # Down
+		Vector2i(0, -1)   # Up
+	]
+	
+	while queue.size() > 0:
+		var current = queue.pop_front()
+		var current_pos: Vector2i = current.position
+		var current_cost: int = current.cost
+		var current_parent = current.parent
+		
+		# Store parent for path reconstruction (except for starting position)
+		if current_parent != null:
+			parent_map[current_pos] = current_parent
+		
+		# Check all adjacent positions
+		for direction in directions:
+			var next_pos: Vector2i = current_pos + direction
+			var next_cost: int = current_cost + 1
+			
+			# Skip if we've exceeded movement range
+			if next_cost > movement_range:
+				continue
+			
+			# Skip if position is invalid or not walkable
+			if not is_position_valid(next_pos) or not is_position_walkable(next_pos):
+				continue
+			
+			# Skip if we've already visited this position with a lower or equal cost
+			if visited.has(next_pos) and visited[next_pos] <= next_cost:
+				continue
+			
+			# Add to visited and queue for further exploration
+			visited[next_pos] = next_cost
+			queue.append({"position": next_pos, "cost": next_cost, "parent": current_pos})
+			
+			# Add to reachable positions if it's not the starting position
+			if next_pos != from_position and next_pos not in reachable_positions:
+				reachable_positions.append(next_pos)
+	
+	return {"reachable_positions": reachable_positions, "parent_map": parent_map}
 
 func get_grid_bounds() -> Rect2i:
 	"""Get the bounds of the grid"""
@@ -317,13 +402,7 @@ func debug_print_tile_info(grid_position: Vector2i) -> void:
 			print("No tile data found")
 	
 	# Also check A* grid state
-	if astar_initialized:
-		var astar_pos = _grid_to_astar_coords(grid_position)
-		print("A* coordinates: ", astar_pos)
-		print("A* solid: ", astar_grid.is_point_solid(astar_pos))
-	else:
-		print("A* not initialized")
-	
+	# With flood-fill pathfinding, there's no A* grid state to check
 	print("========================")
 
 func debug_test_pathfinding(from: Vector2i, to: Vector2i) -> void:
@@ -435,3 +514,10 @@ func _clear_grid_borders() -> void:
 	if grid_borders_parent:
 		for child in grid_borders_parent.get_children():
 			child.queue_free() 
+
+func _clear_path_highlights() -> void:
+	"""Clear all path highlight visuals"""
+	if path_highlights_parent:
+		for child in path_highlights_parent.get_children():
+			child.queue_free()
+	current_path_highlights.clear() 
