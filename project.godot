@@ -10,7 +10,8 @@ config_version=5
 
 [application]
 
-config/name="cursor-tactics"
+config/name="roguelite-tactics"
+run/main_scene="uid://dbomsc77r5x0v"
 config/features=PackedStringArray("4.4", "Forward Plus")
 config/icon="res://icon.svg"
 

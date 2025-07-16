@@ -1,6 +1,7 @@
-[gd_scene load_steps=981 format=3 uid="uid://c7wbq8q87afjh"]
+[gd_scene load_steps=982 format=3 uid="uid://c7wbq8q87afjh"]
 
-[ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://players/swordsman/shadow2.tres" id="1_hh7om"]
+[ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://players/swordsman/shadow.tres" id="1_hh7om"]
+[ext_resource type="Script" uid="uid://cog1150uopnhu" path="res://players/swordsman/swordsman_character.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://dwd4rm6cej2g1" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Die.png" id="2_1fiuy"]
 [ext_resource type="Texture2D" uid="uid://c6mhx233u202u" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Idle2.png" id="3_14541"]
 [ext_resource type="Texture2D" uid="uid://bnif8c24bsp3m" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Idle.png" id="4_g0nrk"]
@@ -3906,7 +3907,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_mjamj")
 }],
-"loop": true,
+"loop": false,
 "name": &"DieBottomLeft",
 "speed": 30.0
 }, {
@@ -3956,7 +3957,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_tcm3c")
 }],
-"loop": true,
+"loop": false,
 "name": &"DieBottomRight",
 "speed": 30.0
 }, {
@@ -4006,7 +4007,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_i7vso")
 }],
-"loop": true,
+"loop": false,
 "name": &"DieTopLeft",
 "speed": 30.0
 }, {
@@ -4056,7 +4057,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_1fnyh")
 }],
-"loop": true,
+"loop": false,
 "name": &"DieTopRight",
 "speed": 30.0
 }, {
@@ -6706,7 +6707,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_v42w2")
 }],
-"loop": true,
+"loop": false,
 "name": &"TakeDamageBottomLeft",
 "speed": 30.0
 }, {
@@ -6756,7 +6757,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_52o3h")
 }],
-"loop": true,
+"loop": false,
 "name": &"TakeDamageBottomRight",
 "speed": 30.0
 }, {
@@ -6806,7 +6807,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_u7o8j")
 }],
-"loop": true,
+"loop": false,
 "name": &"TakeDamageTopLeft",
 "speed": 30.0
 }, {
@@ -6856,7 +6857,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_lvpgx")
 }],
-"loop": true,
+"loop": false,
 "name": &"TakeDamageTopRight",
 "speed": 30.0
 }, {
@@ -7068,6 +7069,7 @@ radius = 7.0
 polygon = PackedVector2Array(-9, -1, -9, -15, 10, -15, 10, 1, 1, 3)
 
 [node name="Swordsman" type="CharacterBody2D"]
+script = ExtResource("1_script")
 
 [node name="Shadow" type="Sprite2D" parent="."]
 visible = false
@@ -7077,9 +7079,9 @@ scale = Vector2(0.22, 0.128)
 texture = ExtResource("1_hh7om")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-position = Vector2(0, -12)
+position = Vector2(0, -10)
 sprite_frames = SubResource("SpriteFrames_knxox")
-animation = &"TakeDamageBottomLeft"
+animation = &"SwipeTopLeft"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 visible = false

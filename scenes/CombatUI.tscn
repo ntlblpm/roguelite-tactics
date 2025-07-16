@@ -98,7 +98,7 @@ horizontal_alignment = 1
 [node name="CurrentEntityHP" type="Label" parent="UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
-text = "HP: 60/60"
+text = "HP: 100/100"
 horizontal_alignment = 1
 
 [node name="CurrentEntityStatus" type="Label" parent="UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer"]
@@ -242,7 +242,7 @@ vertical_alignment = 1
 [node name="HPText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "60/60"
+text = "100/100"
 horizontal_alignment = 1
 vertical_alignment = 1
 

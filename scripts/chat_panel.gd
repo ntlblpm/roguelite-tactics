@@ -18,8 +18,7 @@ func _ready() -> void:
 	# Connect signals
 	chat_input.text_submitted.connect(_on_message_submitted)
 	
-	# Add some initial system messages
-	add_system_message("Chat initialized")
+	# Add initial system message
 	add_system_message("Type your message and press Enter to send")
 	
 	# Focus the input for immediate typing

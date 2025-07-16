@@ -1,0 +1,189 @@
+class_name GridManager
+extends Node2D
+
+## Grid manager for tactical combat system
+## Handles coordinate conversion between world and grid space, pathfinding, and tile accessibility
+
+# Grid configuration
+@export var tile_size: Vector2i = Vector2i(32, 16)  # Isometric tile size
+@export var grid_width: int = 20
+@export var grid_height: int = 20
+
+# References to TileMapLayer
+@onready var tilemap_layer: TileMapLayer = null
+
+# Visual feedback
+var movement_highlights: Array[Vector2i] = []
+var highlight_tiles_parent: Node2D = null
+
+# Signals
+signal tile_clicked(grid_position: Vector2i)
+
+func _ready() -> void:
+	_setup_highlight_system()
+
+func _setup_highlight_system() -> void:
+	"""Setup the visual highlight system for valid movement tiles"""
+	highlight_tiles_parent = Node2D.new()
+	highlight_tiles_parent.name = "MovementHighlights"
+	add_child(highlight_tiles_parent)
+
+func set_tilemap_layer(layer: TileMapLayer) -> void:
+	"""Set the reference to the TileMapLayer"""
+	tilemap_layer = layer
+	if tilemap_layer:
+		print("Grid manager connected to TileMapLayer")
+
+func world_to_grid(world_position: Vector2) -> Vector2i:
+	"""Convert world coordinates to grid coordinates"""
+	if not tilemap_layer:
+		# Fallback calculation if no tilemap
+		var grid_x: int = int(world_position.x / tile_size.x)
+		var grid_y: int = int(world_position.y / tile_size.y)
+		return Vector2i(grid_x, grid_y)
+	
+	# Use TileMapLayer's built-in coordinate conversion
+	var local_pos: Vector2 = tilemap_layer.to_local(world_position)
+	return tilemap_layer.local_to_map(local_pos)
+
+func grid_to_world(grid_position: Vector2i) -> Vector2:
+	"""Convert grid coordinates to world coordinates"""
+	if not tilemap_layer:
+		# Fallback calculation if no tilemap
+		return Vector2(
+			grid_position.x * tile_size.x + tile_size.x / 2,
+			grid_position.y * tile_size.y + tile_size.y / 2
+		)
+	
+	# Use TileMapLayer's built-in coordinate conversion
+	var local_pos: Vector2 = tilemap_layer.map_to_local(grid_position)
+	return tilemap_layer.to_global(local_pos)
+
+func is_position_valid(grid_position: Vector2i) -> bool:
+	"""Check if a grid position is within valid bounds"""
+	return grid_position.x >= -grid_width/2 and grid_position.x < grid_width/2 and \
+		   grid_position.y >= -grid_height/2 and grid_position.y < grid_height/2
+
+func is_position_walkable(grid_position: Vector2i) -> bool:
+	"""Check if a grid position is walkable (not blocked by obstacles)"""
+	if not tilemap_layer:
+		return is_position_valid(grid_position)
+	
+	# Check if position is valid first
+	if not is_position_valid(grid_position):
+		return false
+	
+	# Get tile data at position
+	var tile_data: TileData = tilemap_layer.get_cell_tile_data(grid_position)
+	
+	# If no tile data, position is not walkable
+	if not tile_data:
+		return false
+	
+	# Check terrain type - terrain 0 is typically walkable, terrain 1 is blocked
+	# This depends on how your tileset is configured
+	var terrain_set: int = tile_data.terrain_set
+	var terrain: int = tile_data.terrain
+	
+	# For the isometric tileset, terrain 0 seems to be pathable, terrain 1 is non-pathable
+	return terrain == 0
+
+func get_valid_movement_positions(from_position: Vector2i, movement_range: int) -> Array[Vector2i]:
+	"""Get all valid positions within movement range from a starting position"""
+	var valid_positions: Array[Vector2i] = []
+	
+	# Simple range-based movement (Manhattan distance)
+	for x in range(-movement_range, movement_range + 1):
+		for y in range(-movement_range, movement_range + 1):
+			var check_pos: Vector2i = Vector2i(from_position.x + x, from_position.y + y)
+			var distance: int = abs(x) + abs(y)
+			
+			# Skip positions beyond movement range or the starting position
+			if distance > movement_range or distance == 0:
+				continue
+			
+			# Check if position is valid and walkable
+			if is_position_walkable(check_pos):
+				valid_positions.append(check_pos)
+	
+	return valid_positions
+
+func highlight_movement_range(from_position: Vector2i, movement_range: int) -> void:
+	"""Visually highlight tiles within movement range"""
+	clear_movement_highlights()
+	
+	var valid_positions: Array[Vector2i] = get_valid_movement_positions(from_position, movement_range)
+	
+	for grid_pos in valid_positions:
+		_create_highlight_tile(grid_pos)
+	
+	movement_highlights = valid_positions
+
+func _create_highlight_tile(grid_position: Vector2i) -> void:
+	"""Create a visual highlight at a grid position"""
+	var highlight: Polygon2D = Polygon2D.new()
+	
+	# Create diamond shape that matches isometric tile appearance
+	var half_width: float = tile_size.x * 0.4  # Slightly smaller than tile for visibility
+	var half_height: float = tile_size.y * 0.4
+	
+	# Define diamond vertices (clockwise from top)
+	var diamond_points: PackedVector2Array = PackedVector2Array([
+		Vector2(0, -half_height),           # Top
+		Vector2(half_width, 0),             # Right  
+		Vector2(0, half_height),            # Bottom
+		Vector2(-half_width, 0)             # Left
+	])
+	
+	highlight.polygon = diamond_points
+	highlight.color = Color(0, 1, 0, 0.4)  # Semi-transparent green
+	highlight.position = grid_to_world(grid_position)
+	
+	highlight_tiles_parent.add_child(highlight)
+
+func clear_movement_highlights() -> void:
+	"""Remove all movement highlight visuals"""
+	if highlight_tiles_parent:
+		for child in highlight_tiles_parent.get_children():
+			child.queue_free()
+	movement_highlights.clear()
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var clicked_grid_pos: Vector2i = world_to_grid(get_global_mouse_position())
+		tile_clicked.emit(clicked_grid_pos)
+
+func calculate_movement_cost(from: Vector2i, to: Vector2i) -> int:
+	"""Calculate the movement cost between two grid positions"""
+	# Using Manhattan distance
+	return abs(to.x - from.x) + abs(to.y - from.y)
+
+func find_path(from: Vector2i, to: Vector2i, max_cost: int) -> Array[Vector2i]:
+	"""Find a path from one position to another within movement cost"""
+	# Simple pathfinding for now - just check if direct path is valid
+	var cost: int = calculate_movement_cost(from, to)
+	
+	if cost <= max_cost and is_position_walkable(to):
+		return [to]  # Direct path
+	
+	return []  # No valid path found
+
+func get_grid_bounds() -> Rect2i:
+	"""Get the bounds of the grid"""
+	return Rect2i(-grid_width/2, -grid_height/2, grid_width, grid_height)
+
+func debug_print_tile_info(grid_position: Vector2i) -> void:
+	"""Debug function to print information about a tile"""
+	print("=== Tile Info for ", grid_position, " ===")
+	print("Valid: ", is_position_valid(grid_position))
+	print("Walkable: ", is_position_walkable(grid_position))
+	print("World position: ", grid_to_world(grid_position))
+	
+	if tilemap_layer:
+		var tile_data: TileData = tilemap_layer.get_cell_tile_data(grid_position)
+		if tile_data:
+			print("Terrain set: ", tile_data.terrain_set)
+			print("Terrain: ", tile_data.terrain)
+		else:
+			print("No tile data found")
+	print("========================") 

@@ -1,4 +1,4 @@
-# Cursor Tactics - Game Design Document
+# Roguelite Tactics - Game Design Document
 
 ## Game Overview
 

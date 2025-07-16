@@ -1,9 +1,11 @@
-[gd_scene load_steps=3 format=4 uid="uid://dbomsc77r5x0v"]
+[gd_scene load_steps=4 format=4 uid="uid://dbomsc77r5x0v"]
 
 [ext_resource type="TileSet" uid="uid://dj336td0n3350" path="res://layer1tileset.tres" id="1_1ahhd"]
 [ext_resource type="PackedScene" uid="uid://umx5wue4gs30" path="res://scenes/CombatUI.tscn" id="2_ayhjk"]
+[ext_resource type="Script" uid="uid://cvq18dcn6g6kk" path="res://scripts/game_controller.gd" id="3_controller"]
 
 [node name="TestRoom" type="Node2D"]
+script = ExtResource("3_controller")
 
 [node name="CombatArea" type="Node2D" parent="."]
 
