@@ -12,6 +12,10 @@ extends Node2D
 # References to TileMapLayer
 @onready var tilemap_layer: TileMapLayer = null
 
+# A* pathfinding
+var astar_grid: AStarGrid2D = AStarGrid2D.new()
+var astar_initialized: bool = false
+
 # Visual feedback
 var movement_highlights: Array[Vector2i] = []
 var highlight_tiles_parent: Node2D = null
@@ -21,6 +25,7 @@ signal tile_clicked(grid_position: Vector2i)
 
 func _ready() -> void:
 	_setup_highlight_system()
+	_initialize_astar_grid()
 
 func _setup_highlight_system() -> void:
 	"""Setup the visual highlight system for valid movement tiles"""
@@ -28,11 +33,45 @@ func _setup_highlight_system() -> void:
 	highlight_tiles_parent.name = "MovementHighlights"
 	add_child(highlight_tiles_parent)
 
+func _initialize_astar_grid() -> void:
+	"""Initialize the A* grid for pathfinding"""
+	if astar_initialized:
+		return
+	
+	# Set up the grid size (AStarGrid2D uses 0-based indexing)
+	astar_grid.size = Vector2i(grid_width, grid_height)
+	astar_grid.cell_size = Vector2(1, 1)
+	astar_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+	
+	astar_grid.update()
+	_update_walkable_points()
+	
+	astar_initialized = true
+
+
+func _grid_to_astar_coords(grid_pos: Vector2i) -> Vector2i:
+	"""Convert game grid coordinates to A* grid coordinates"""
+	return Vector2i(grid_pos.x + grid_width/2, grid_pos.y + grid_height/2)
+
+func _astar_to_grid_coords(astar_pos: Vector2i) -> Vector2i:
+	"""Convert A* grid coordinates to game grid coordinates"""
+	return Vector2i(astar_pos.x - grid_width/2, astar_pos.y - grid_height/2)
+
+func _update_walkable_points() -> void:
+	"""Update which points are walkable in the A* grid"""
+	for x in range(-grid_width/2, grid_width/2):
+		for y in range(-grid_height/2, grid_height/2):
+			var grid_pos = Vector2i(x, y)
+			var astar_pos = _grid_to_astar_coords(grid_pos)
+			var is_walkable = is_position_walkable(grid_pos)
+			astar_grid.set_point_solid(astar_pos, not is_walkable)
+
 func set_tilemap_layer(layer: TileMapLayer) -> void:
 	"""Set the reference to the TileMapLayer"""
 	tilemap_layer = layer
 	if tilemap_layer:
 		print("Grid manager connected to TileMapLayer")
+		_initialize_astar_grid()
 
 func world_to_grid(world_position: Vector2) -> Vector2i:
 	"""Convert world coordinates to grid coordinates"""
@@ -89,21 +128,24 @@ func is_position_walkable(grid_position: Vector2i) -> bool:
 	return terrain == 0
 
 func get_valid_movement_positions(from_position: Vector2i, movement_range: int) -> Array[Vector2i]:
-	"""Get all valid positions within movement range from a starting position"""
+	"""Get all valid positions within movement range from a starting position using pathfinding"""
 	var valid_positions: Array[Vector2i] = []
 	
-	# Simple range-based movement (Manhattan distance)
+	if not astar_initialized:
+		return valid_positions
+	
+	# Check all positions in movement range
 	for x in range(-movement_range, movement_range + 1):
 		for y in range(-movement_range, movement_range + 1):
 			var check_pos: Vector2i = Vector2i(from_position.x + x, from_position.y + y)
 			var distance: int = abs(x) + abs(y)
 			
-			# Skip positions beyond movement range or the starting position
 			if distance > movement_range or distance == 0:
 				continue
 			
-			# Check if position is valid and walkable
-			if is_position_walkable(check_pos):
+			# Use pathfinding to check if position is reachable within movement range
+			var path: Array[Vector2i] = find_path(from_position, check_pos, movement_range)
+			if path.size() > 0:
 				valid_positions.append(check_pos)
 	
 	return valid_positions
@@ -153,20 +195,38 @@ func _input(event: InputEvent) -> void:
 		var clicked_grid_pos: Vector2i = world_to_grid(get_global_mouse_position())
 		tile_clicked.emit(clicked_grid_pos)
 
-func calculate_movement_cost(from: Vector2i, to: Vector2i) -> int:
-	"""Calculate the movement cost between two grid positions"""
-	# Using Manhattan distance
-	return abs(to.x - from.x) + abs(to.y - from.y)
 
-func find_path(from: Vector2i, to: Vector2i, max_cost: int) -> Array[Vector2i]:
-	"""Find a path from one position to another within movement cost"""
-	# Simple pathfinding for now - just check if direct path is valid
-	var cost: int = calculate_movement_cost(from, to)
+func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector2i]:
+	"""Find a path from one position to another using A* pathfinding"""
+	if not astar_initialized:
+		return []
 	
-	if cost <= max_cost and is_position_walkable(to):
-		return [to]  # Direct path
+	# Check if positions are valid and walkable
+	if not is_position_valid(from) or not is_position_valid(to) or not is_position_walkable(to):
+		return []
 	
-	return []  # No valid path found
+	# Convert to A* coordinate system
+	var astar_from = _grid_to_astar_coords(from)
+	var astar_to = _grid_to_astar_coords(to)
+	
+	# Use A* to find the path
+	var path_points: PackedVector2Array = astar_grid.get_point_path(astar_from, astar_to)
+	
+	if path_points.size() == 0:
+		return []
+	
+	# Convert to Array[Vector2i] and remove starting position
+	var path: Array[Vector2i] = []
+	for i in range(1, path_points.size()):
+		var astar_pos = Vector2i(path_points[i])
+		var grid_pos = _astar_to_grid_coords(astar_pos)
+		path.append(grid_pos)
+	
+	# Filter by max_cost if specified
+	if max_cost != -1 and path.size() > max_cost:
+		path = path.slice(0, max_cost)
+	
+	return path
 
 func get_grid_bounds() -> Rect2i:
 	"""Get the bounds of the grid"""

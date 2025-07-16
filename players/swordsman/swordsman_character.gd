@@ -21,6 +21,7 @@ var is_moving: bool = false
 # Movement and animation
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var movement_tween: Tween
+var current_path: Array[Vector2] = []
 
 # Animation state tracking
 var is_dead: bool = false
@@ -87,68 +88,187 @@ func _play_animation(base_name: String, direction: GameConstants.Direction = cur
 # Input handling moved to GameController to avoid conflicts
 
 func attempt_move_to(target_position: Vector2i) -> bool:
-	"""Attempt to move to a grid position, consuming MP if successful"""
+	"""Attempt to move to a grid position using pathfinding, consuming MP if successful"""
+	print("DEBUG: attempt_move_to called for target: ", target_position)
+	print("DEBUG: current grid_position: ", grid_position)
+	print("DEBUG: current_movement_points: ", current_movement_points)
+	
 	if not grid_manager or is_moving:
+		print("DEBUG: No grid manager or already moving")
 		return false
 	
 	# Check if target position is valid and pathable
-	if not grid_manager.is_position_valid(target_position) or not grid_manager.is_position_walkable(target_position):
+	if not grid_manager.is_position_valid(target_position):
+		print("DEBUG: Target position is not valid")
 		return false
 	
-	# Calculate movement cost using grid manager
-	var movement_cost: int = grid_manager.calculate_movement_cost(grid_position, target_position)
+	if not grid_manager.is_position_walkable(target_position):
+		print("DEBUG: Target position is not walkable")
+		return false
+	
+	# Find path to target position
+	var path: Array[Vector2i] = grid_manager.find_path(grid_position, target_position, current_movement_points)
+	
+	# Check if path exists and is within movement range
+	if path.size() == 0:
+		print("No valid path to target position or not enough movement points!")
+		return false
+	
+	print("DEBUG: Found path with ", path.size(), " steps: ", path)
+	
+	# Calculate the actual movement cost of the path
+	var movement_cost: int = _calculate_path_cost(path)
 	
 	# Check if we have enough MP
 	if movement_cost > current_movement_points:
 		print("Not enough movement points! Need: ", movement_cost, " Have: ", current_movement_points)
 		return false
 	
-	# Execute the movement
-	_execute_movement(target_position, movement_cost)
+	# Execute the movement along the path
+	_execute_path_movement(path, movement_cost)
 	return true
 
-func _execute_movement(target_position: Vector2i, cost: int) -> void:
-	"""Execute movement to target position"""
-	# Determine movement direction and update facing
-	current_facing_direction = GameConstants.determine_movement_direction(grid_position, target_position)
+func _calculate_path_cost(path: Array[Vector2i]) -> int:
+	"""Calculate the total movement cost of a path"""
+	if path.size() == 0:
+		return 0
+	
+	var total_cost: int = 0
+	var current_pos: Vector2i = grid_position
+	
+	for next_pos in path:
+		total_cost += abs(next_pos.x - current_pos.x) + abs(next_pos.y - current_pos.y)
+		current_pos = next_pos
+	
+	return total_cost
+
+func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
+	"""Execute movement along a path"""
+	if path.size() == 0:
+		return
 	
 	# Consume movement points
 	current_movement_points -= cost
 	movement_points_changed.emit(current_movement_points, max_movement_points)
 	
-	# Update grid position immediately (before animation)
-	grid_position = target_position
-	target_grid_position = target_position
+	# Update grid position to final destination immediately
+	grid_position = path[-1]
+	target_grid_position = path[-1]
 	
 	# Emit movement completed signal immediately for instant range updates
 	movement_completed.emit(grid_position)
 	
-	# Start movement animation
-	_animate_movement_to_position(grid_manager.grid_to_world(target_position))
+	# Start movement animation along the path (direction will be set dynamically)
+	_animate_path_movement(path)
 
-func _animate_movement_to_position(world_position: Vector2) -> void:
-	"""Animate character movement to world position"""
+
+func _animate_path_movement(path: Array[Vector2i]) -> void:
+	"""Animate character movement along a path"""
+	if path.size() == 0:
+		return
+	
 	is_moving = true
 	
 	# Stop any existing tween
 	if movement_tween:
 		movement_tween.kill()
 	
+	# Convert path to world positions
+	current_path = []
+	current_path.append(global_position)  # Start from current position
+	for grid_pos in path:
+		current_path.append(grid_manager.grid_to_world(grid_pos))
+	
+	print("DEBUG: Path construction - grid_path: ", path)
+	print("DEBUG: Path construction - final grid position should be: ", grid_position)
+	print("DEBUG: Path construction - world_path: ", current_path)
+	
+	# Calculate total duration based on path length
+	var total_duration: float = GameConstants.MOVEMENT_ANIMATION_DURATION * path.size()
+	
 	# Create new tween
 	movement_tween = create_tween()
-	movement_tween.set_ease(Tween.EASE_OUT)
-	movement_tween.set_trans(Tween.TRANS_QUART)
+	movement_tween.set_ease(Tween.EASE_IN_OUT)
+	movement_tween.set_trans(Tween.TRANS_SINE)
 	
-	# Animate position
-	movement_tween.tween_property(self, "global_position", world_position, GameConstants.MOVEMENT_ANIMATION_DURATION)
+	# Use tween_method to smoothly interpolate through all path points
+	print("DEBUG: Starting path animation with ", current_path.size(), " points, duration: ", total_duration)
+	print("DEBUG: World path: ", current_path)
+	movement_tween.tween_method(_interpolate_along_current_path, 0.0, 1.0, total_duration)
 	movement_tween.tween_callback(_on_movement_complete)
 	
-	# Play appropriate movement animation in the correct direction
-	_play_animation(GameConstants.RUN_ANIMATION_PREFIX)
+	# Start with run animation in current direction, will be updated during movement
+	_play_animation(GameConstants.RUN_ANIMATION_PREFIX, current_facing_direction)
+
+
+func _interpolate_along_current_path(progress: float) -> void:
+	"""Interpolate character position along current_path based on progress (0.0 to 1.0)"""
+	if current_path.size() < 2:
+		print("DEBUG: current_path too small: ", current_path.size())
+		return
+	
+	# Special case: if we're at the very end, go to the final position
+	if progress >= 1.0:
+		global_position = current_path[-1]
+		print("DEBUG: Final progress reached, setting to last position: ", global_position)
+		return
+	
+	# Calculate which segment we're in and the local progress within that segment
+	var segment_count: int = current_path.size() - 1
+	var scaled_progress: float = progress * segment_count
+	var segment_index: int = int(scaled_progress)
+	var segment_progress: float = scaled_progress - segment_index
+	
+	# Clamp to valid range
+	segment_index = clamp(segment_index, 0, segment_count - 1)
+	segment_progress = clamp(segment_progress, 0.0, 1.0)
+	
+	# Interpolate between the two points in the current segment
+	var start_pos: Vector2 = current_path[segment_index]
+	var end_pos: Vector2 = current_path[segment_index + 1]
+	var new_position: Vector2 = start_pos.lerp(end_pos, segment_progress)
+	
+	# Update facing direction based on current movement direction
+	_update_facing_direction_for_movement(start_pos, end_pos)
+	
+	# Debug output (less verbose)
+	if int(progress * 100) % 20 == 0:  # Only print every 20%
+		print("DEBUG: progress=", progress, " segment=", segment_index, " moving to: ", new_position)
+	
+	# Set the position
+	global_position = new_position
+
+func _update_facing_direction_for_movement(start_pos: Vector2, end_pos: Vector2) -> void:
+	"""Update character facing direction based on movement vector"""
+	var movement_vector: Vector2 = end_pos - start_pos
+	
+	# Only update direction if there's actual movement
+	if movement_vector.length() > 0.1:
+		# Convert world movement to grid movement to use existing direction logic
+		var start_grid: Vector2i = grid_manager.world_to_grid(start_pos)
+		var end_grid: Vector2i = grid_manager.world_to_grid(end_pos)
+		
+		var new_direction: GameConstants.Direction = GameConstants.determine_movement_direction(start_grid, end_grid)
+		
+		# Update direction and ensure run animation is playing
+		if new_direction != current_facing_direction:
+			current_facing_direction = new_direction
+			_play_animation(GameConstants.RUN_ANIMATION_PREFIX, current_facing_direction)
+		else:
+			# Even if direction didn't change, make sure we're playing the run animation
+			# This handles the case where the character was idle and starts moving in the same direction
+			if not animated_sprite.animation.begins_with(GameConstants.RUN_ANIMATION_PREFIX):
+				_play_animation(GameConstants.RUN_ANIMATION_PREFIX, current_facing_direction)
+
 
 func _on_movement_complete() -> void:
 	"""Called when movement animation is complete"""
 	is_moving = false
+	
+	# Ensure visual position matches the final grid position
+	if grid_manager:
+		global_position = grid_manager.grid_to_world(grid_position)
+		print("DEBUG: Final position corrected to: ", global_position, " for grid: ", grid_position)
 	
 	# Return to idle animation in the current facing direction
 	_play_animation(GameConstants.IDLE_ANIMATION_PREFIX)
