@@ -175,7 +175,7 @@ func _animate_path_movement(path: Array[Vector2i]) -> void:
 	
 	# Convert path to world positions
 	current_path = []
-	current_path.append(global_position)  # Start from current position
+	current_path.append(global_position) # Start from current position
 	for grid_pos in path:
 		current_path.append(grid_manager.grid_to_world(grid_pos))
 	
@@ -232,7 +232,7 @@ func _interpolate_along_current_path(progress: float) -> void:
 	_update_facing_direction_for_movement(start_pos, end_pos)
 	
 	# Debug output (less verbose)
-	if int(progress * 100) % 20 == 0:  # Only print every 20%
+	if int(progress * 100) % 20 == 0: # Only print every 20%
 		print("DEBUG: progress=", progress, " segment=", segment_index, " moving to: ", new_position)
 	
 	# Set the position
@@ -322,7 +322,7 @@ func get_stats_summary() -> String:
 		current_health_points, max_health_points,
 		current_movement_points, max_movement_points,
 		current_action_points, max_action_points
-	] 
+	]
 
 func set_facing_direction(direction: GameConstants.Direction) -> void:
 	"""Manually set the character's facing direction"""
