@@ -143,9 +143,8 @@ Players view the battlefield from a **45-degree rotated isometric camera angle**
 ## Grid System & Level Design
 
 ### Diamond Grid Layout (Dofus-Inspired)
-- **Base Dimensions**: 20 tiles wide × 20 tiles tall rectangular container (400 total tiles)
+- **Base Dimensions**: ~20 tiles wide × ~20 tiles tall rectangular container
 - **Playable Area**: Diamond/rhombus shape within the rectangular grid
-- **Total Playable Tiles**: ~300 tiles (varies by room generation and obstacle placement)
 - **Tile Reduction Factors**:
   - **Edge Removal**: Diamond shape cuts off corners and tapered edges (~50-70 tiles removed)
   - **Random Obstacles**: Procedurally placed walls, rocks, pillars block movement and LOS (~30-50 tiles removed)

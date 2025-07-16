@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://dqolhkymmc4wg"]
+
+[ext_resource type="TileSet" uid="uid://dj336td0n3350" path="res://layer1tileset.tres" id="1_qhtps"]
+
+[node name="CombatArea" type="Node2D"]
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("1_qhtps")

@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3 uid="uid://umx5wue4gs30"]
 
-[ext_resource type="Script" uid="uid://rruj85y2avvm" path="res://scenes/chat_panel.gd" id="1_1a2b3c"]
+[ext_resource type="Script" uid="uid://rruj85y2avvm" path="res://scripts/chat_panel.gd" id="1_1a2b3c"]
 
-[node name="Main" type="Control"]
+[node name="CombatUI" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,7 +26,7 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 10.0
-offset_top = -379.0
+offset_top = -356.0
 offset_right = 258.0
 offset_bottom = -10.0
 grow_vertical = 0
