@@ -15,13 +15,13 @@ func _ready() -> void:
 	
 	# Skeleton stats: 50 HP, 6 AP, 3 MP
 	max_health_points = 50
-	max_action_points = 6
+	max_ability_points = 6
 	max_movement_points = 3
 	base_initiative = 5  # Lower initiative than most players
 	
 	# Initialize current stats to max
 	current_health_points = max_health_points
-	current_action_points = max_action_points
+	current_ability_points = max_ability_points
 	current_movement_points = max_movement_points
 	current_initiative = base_initiative
 	
@@ -46,9 +46,9 @@ func _attempt_attack() -> void:
 	# Deal damage to target
 	_deal_damage_to_target(current_target)
 	
-	# Consume action points
-	current_action_points -= SKELETON_ATTACK_COST
-	action_points_changed.emit(current_action_points, max_action_points)
+	# Consume ability points
+	current_ability_points -= SKELETON_ATTACK_COST
+	ability_points_changed.emit(current_ability_points, max_ability_points)
 	
 	# Emit AI action signal
 	ai_action_performed.emit("attack")

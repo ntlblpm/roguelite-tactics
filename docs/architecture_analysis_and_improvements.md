@@ -171,8 +171,8 @@ func get_health_percentage() -> float
 ```
 
 ```gdscript
-# Action Points Component
-class_name ActionPointsComponent
+# Ability Points Component
+class_name AbilityPointsComponent
 extends Node
 
 signal points_changed(current: int, max: int)
@@ -244,7 +244,7 @@ extends Node2D
 
 # Core components
 @onready var health: HealthComponent
-@onready var action_points: ActionPointsComponent  
+@onready var ability_points: AbilityPointsComponent  
 @onready var movement: MovementComponent
 @onready var animation: AnimationComponent
 
@@ -260,12 +260,12 @@ func _ready() -> void:
 
 func _setup_core_components() -> void:
     health = HealthComponent.new()
-    action_points = ActionPointsComponent.new()
+    ability_points = AbilityPointsComponent.new()
     movement = MovementComponent.new()
     animation = AnimationComponent.new()
     
     add_child(health)
-    add_child(action_points)
+    add_child(ability_points)
     add_child(movement)
     add_child(animation)
 
@@ -281,7 +281,7 @@ func _setup_optional_components() -> void:
 func _connect_component_signals() -> void:
     health.died.connect(_on_character_died)
     movement.moved.connect(_on_character_moved)
-    action_points.points_consumed.connect(_on_action_points_used)
+    ability_points.points_consumed.connect(_on_ability_points_used)
 ```
 
 ### Event-Driven System Communication
@@ -387,13 +387,13 @@ func _ready() -> void:
     "name": "Swordsman",
     "base_stats": {
         "health": 100,
-        "action_points": 6,
+        "ability_points": 6,
         "movement_points": 3,
         "initiative": 15
     },
     "components": [
         "HealthComponent",
-        "ActionPointsComponent", 
+        "AbilityPointsComponent", 
         "MovementComponent",
         "MeleeAttackComponent"
     ],
@@ -492,7 +492,7 @@ func test_character_takes_damage():
 ## Implementation Roadmap
 
 ### Phase 1: Component Foundation
-1. **Create core components**: HealthComponent, ActionPointsComponent, MovementComponent
+1. **Create core components**: HealthComponent, AbilityPointsComponent, MovementComponent
 2. **Implement EventBus**: Central event system
 3. **Refactor one character type**: Convert Swordsman to composition pattern
 4. **Basic testing setup**: Unit tests for components

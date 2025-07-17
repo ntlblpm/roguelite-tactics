@@ -30,11 +30,11 @@ static func get_roster_upgrades() -> Array[Dictionary]:
 			"stat_bonus_per_level": {"max_health_points": 5}
 		},
 		{
-			"id": "action_efficiency",
-			"name": "Action Efficiency",
-			"description": "Increases maximum action points for all characters",
+			"id": "ability_efficiency",
+			"name": "Ability Efficiency",
+			"description": "Increases maximum ability points for all characters",
 			"max_level": 5,
-			"stat_bonus_per_level": {"max_action_points": 1}
+			"stat_bonus_per_level": {"max_ability_points": 1}
 		},
 		{
 			"id": "mobility_training",
@@ -100,7 +100,7 @@ static func _get_swordsman_upgrades() -> Array[Dictionary]:
 		{
 			"id": "stalwart_defense",
 			"name": "Stalwart Defense",
-			"description": "Reduces action point cost for defensive abilities",
+			"description": "Reduces ability point cost for defensive abilities",
 			"max_level": 5,
 			"stat_bonus_per_level": {"defensive_ap_reduction": 1}
 		},
@@ -147,7 +147,7 @@ static func _get_archer_upgrades() -> Array[Dictionary]:
 		{
 			"id": "rapid_fire",
 			"name": "Rapid Fire",
-			"description": "Reduces action point cost for ranged attacks",
+			"description": "Reduces ability point cost for ranged attacks",
 			"max_level": 6,
 			"stat_bonus_per_level": {"ranged_ap_reduction": 1}
 		},
@@ -201,7 +201,7 @@ static func _get_pyromancer_upgrades() -> Array[Dictionary]:
 		{
 			"id": "mana_efficiency",
 			"name": "Mana Efficiency",
-			"description": "Reduces action point cost for spells",
+			"description": "Reduces ability point cost for spells",
 			"max_level": 8,
 			"stat_bonus_per_level": {"spell_ap_reduction": 1}
 		},
@@ -222,9 +222,9 @@ static func _get_pyromancer_upgrades() -> Array[Dictionary]:
 		{
 			"id": "arcane_intellect",
 			"name": "Arcane Intellect",
-			"description": "Increases maximum action points and spell power",
+			"description": "Increases maximum ability points and spell power",
 			"max_level": 6,
-			"stat_bonus_per_level": {"max_action_points": 1, "spell_power": 4}
+			"stat_bonus_per_level": {"max_ability_points": 1, "spell_power": 4}
 		},
 		{
 			"id": "fire_resistance",

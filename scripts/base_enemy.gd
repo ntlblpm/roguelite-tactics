@@ -257,7 +257,7 @@ func _can_attack_target(target: BaseCharacter) -> bool:
 	if not target or target.is_dead:
 		return false
 	
-	if current_action_points < _get_attack_cost():
+	if current_ability_points < _get_attack_cost():
 		return false
 	
 	# Check if target is in attack range

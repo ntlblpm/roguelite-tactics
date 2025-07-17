@@ -93,8 +93,8 @@ func _exit_tree() -> void:
 				character.health_changed.disconnect(_on_health_changed)
 			if character.movement_points_changed.is_connected(_on_movement_points_changed):
 				character.movement_points_changed.disconnect(_on_movement_points_changed)
-			if character.action_points_changed.is_connected(_on_action_points_changed):
-				character.action_points_changed.disconnect(_on_action_points_changed)
+			if character.ability_points_changed.is_connected(_on_ability_points_changed):
+				character.ability_points_changed.disconnect(_on_ability_points_changed)
 			if character.character_selected.is_connected(_on_character_selected):
 				character.character_selected.disconnect(_on_character_selected)
 			if character.movement_completed.is_connected(_on_movement_completed):
@@ -323,13 +323,13 @@ func _clear_existing_characters() -> void:
 	for peer_id in player_characters.keys():
 		var character = player_characters[peer_id]
 		if character and is_instance_valid(character):
-			# Disconnect signals before freeing
+					# Disconnect signals before freeing
 			if character.health_changed.is_connected(_on_health_changed):
 				character.health_changed.disconnect(_on_health_changed)
 			if character.movement_points_changed.is_connected(_on_movement_points_changed):
 				character.movement_points_changed.disconnect(_on_movement_points_changed)
-			if character.action_points_changed.is_connected(_on_action_points_changed):
-				character.action_points_changed.disconnect(_on_action_points_changed)
+			if character.ability_points_changed.is_connected(_on_ability_points_changed):
+				character.ability_points_changed.disconnect(_on_ability_points_changed)
 			if character.character_selected.is_connected(_on_character_selected):
 				character.character_selected.disconnect(_on_character_selected)
 			if character.movement_completed.is_connected(_on_movement_completed):
@@ -457,7 +457,7 @@ func _connect_systems() -> void:
 			current_player_id = peer_id
 			character.health_changed.connect(_on_health_changed)
 			character.movement_points_changed.connect(_on_movement_points_changed)
-			character.action_points_changed.connect(_on_action_points_changed)
+			character.ability_points_changed.connect(_on_ability_points_changed)
 			character.character_selected.connect(_on_character_selected)
 			character.movement_completed.connect(_on_movement_completed)
 		
@@ -567,7 +567,7 @@ func _sync_turn_state() -> void:
 			if mp_text:
 				mp_text.text = "%d/%d" % [current_character.current_movement_points, current_character.max_movement_points]
 			if ap_text:
-				ap_text.text = "%d/%d" % [current_character.current_action_points, current_character.max_action_points]
+				ap_text.text = "%d/%d" % [current_character.current_ability_points, current_character.max_ability_points]
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Update HP display when character health changes"""
@@ -611,8 +611,8 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 			if current_turn_character and not (current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled()):
 				chat_panel.add_system_message("No movement points remaining - Movement range cleared")
 
-func _on_action_points_changed(current: int, maximum: int) -> void:
-	## Update AP display when action points change
+func _on_ability_points_changed(current: int, maximum: int) -> void:
+	## Update AP display when ability points change
 	
 	# Only update UI for the local player's character
 	var sender_character = get_current_player_character()
@@ -718,7 +718,7 @@ func _on_turn_started(_character: BaseCharacter) -> void:
 			if mp_text:
 				mp_text.text = "%d/%d" % [current_turn_character.current_movement_points, current_turn_character.max_movement_points]
 			if ap_text:
-				ap_text.text = "%d/%d" % [current_turn_character.current_action_points, current_turn_character.max_action_points]
+				ap_text.text = "%d/%d" % [current_turn_character.current_ability_points, current_turn_character.max_ability_points]
 			
 			# Show movement range for the current character
 			if grid_manager and current_turn_character.current_movement_points > 0:

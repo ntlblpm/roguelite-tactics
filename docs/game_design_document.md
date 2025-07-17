@@ -83,7 +83,7 @@ Players view the battlefield from a **45-degree rotated isometric camera angle**
 
 ### Core Mechanics
 - **Turn Order**: Based on initiative stat
-- **Action Points (AP)**: Base 6 per turn, used for abilities
+- **Ability Points (AP)**: Base 6 per turn, used for abilities
 - **Movement Points (MP)**: Base 3 per turn, used for movement
 - **Movement**: Diamond grid-based, 1 MP = 1 tile (4-directional: top-left, top-right, bottom-left, bottom-right)
 - **Modifiers**: AP/MP can be modified by levels, abilities, equipment, buffs/debuffs

@@ -7,12 +7,12 @@ extends CharacterBody2D
 # Combat stats
 @export var max_health_points: int = GameConstants.DEFAULT_HEALTH_POINTS
 @export var max_movement_points: int = GameConstants.DEFAULT_MOVEMENT_POINTS
-@export var max_action_points: int = GameConstants.DEFAULT_ACTION_POINTS
+@export var max_ability_points: int = GameConstants.DEFAULT_ABILITY_POINTS
 @export var base_initiative: int = GameConstants.DEFAULT_INITIATIVE
 
 var current_health_points: int = GameConstants.DEFAULT_HEALTH_POINTS
 var current_movement_points: int = GameConstants.DEFAULT_MOVEMENT_POINTS
-var current_action_points: int = GameConstants.DEFAULT_ACTION_POINTS
+var current_ability_points: int = GameConstants.DEFAULT_ABILITY_POINTS
 var current_initiative: int = GameConstants.DEFAULT_INITIATIVE
 
 # Grid position
@@ -34,7 +34,7 @@ var current_facing_direction: GameConstants.Direction = GameConstants.Direction.
 # Signals for UI updates
 signal health_changed(current: int, maximum: int)
 signal movement_points_changed(current: int, maximum: int)
-signal action_points_changed(current: int, maximum: int)
+signal ability_points_changed(current: int, maximum: int)
 signal turn_ended()
 @warning_ignore("unused_signal")
 signal character_selected()
@@ -83,7 +83,7 @@ func _initialize_stats() -> void:
 	"""Initialize character stats to maximum values"""
 	current_health_points = max_health_points
 	current_movement_points = max_movement_points
-	current_action_points = max_action_points
+	current_ability_points = max_ability_points
 	current_initiative = base_initiative
 	
 	# Emit initial stat updates
@@ -103,7 +103,7 @@ func _emit_stat_updates() -> void:
 	"""Emit all stat update signals for UI"""
 	health_changed.emit(current_health_points, max_health_points)
 	movement_points_changed.emit(current_movement_points, max_movement_points)
-	action_points_changed.emit(current_action_points, max_action_points)
+	ability_points_changed.emit(current_ability_points, max_ability_points)
 
 func _play_animation(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
 	"""Play an animation with the appropriate directional suffix"""
@@ -321,7 +321,7 @@ func end_turn() -> void:
 func _refresh_resources() -> void:
 	"""Refresh MP and AP to maximum values"""
 	current_movement_points = max_movement_points
-	current_action_points = max_action_points
+	current_ability_points = max_ability_points
 	_emit_stat_updates()
 
 func set_grid_position(new_position: Vector2i) -> void:
@@ -359,7 +359,7 @@ func get_stats_summary() -> String:
 	return "HP: %d/%d | MP: %d/%d | AP: %d/%d | Init: %d" % [
 		current_health_points, max_health_points,
 		current_movement_points, max_movement_points,
-		current_action_points, max_action_points,
+		current_ability_points, max_ability_points,
 		current_initiative
 	]
 
@@ -380,7 +380,7 @@ func get_character_state() -> Dictionary:
 		"target_grid_position": target_grid_position,
 		"current_health_points": current_health_points,
 		"current_movement_points": current_movement_points,
-		"current_action_points": current_action_points,
+		"current_ability_points": current_ability_points,
 		"current_initiative": current_initiative,
 		"current_facing_direction": current_facing_direction,
 		"is_moving": is_moving,
@@ -394,7 +394,7 @@ func set_character_state(state: Dictionary) -> void:
 	target_grid_position = state.get("target_grid_position", Vector2i.ZERO)
 	current_health_points = state.get("current_health_points", max_health_points)
 	current_movement_points = state.get("current_movement_points", max_movement_points)
-	current_action_points = state.get("current_action_points", max_action_points)
+	current_ability_points = state.get("current_ability_points", max_ability_points)
 	current_initiative = state.get("current_initiative", base_initiative)
 	current_facing_direction = state.get("current_facing_direction", GameConstants.Direction.BOTTOM_RIGHT)
 	is_moving = state.get("is_moving", false)
