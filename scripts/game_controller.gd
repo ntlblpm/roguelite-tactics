@@ -628,15 +628,16 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 	else:
 		print("DEBUG: mp_text is null - UI not connected properly")
 	
-	# Update movement highlights only if it's the local player's turn
-	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and current > 0:
+	# Update movement highlights only if it's the local player's turn AND the turn is actually active
+	# This prevents highlights from flashing during turn transitions when resources are refreshed
+	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current > 0:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			grid_manager.highlight_movement_range(current_turn_character.grid_position, current, current_turn_character)
 	elif grid_manager:
-		# Clear highlights if no movement points remaining or not local player's turn
+		# Clear highlights if no movement points remaining or not local player's turn or turn not active
 		grid_manager.clear_movement_highlights()
-		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and current <= 0:
+		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
 			chat_panel.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_action_points_changed(current: int, maximum: int) -> void:
@@ -657,8 +658,8 @@ func _on_action_points_changed(current: int, maximum: int) -> void:
 
 func _on_character_selected() -> void:
 	"""Handle when the character is selected"""
-	# Only highlight movement for the local player's turn
-	if grid_manager and turn_manager and turn_manager.is_local_player_turn():
+	# Only highlight movement for the local player's turn and when the turn is actually active
+	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active():
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Show movement range when selected
@@ -713,8 +714,8 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 
 func _on_movement_completed(new_position: Vector2i) -> void:
 	"""Handle when the character's movement is completed"""
-	# Only update movement highlights if it's the local player's turn
-	if grid_manager and turn_manager and turn_manager.is_local_player_turn():
+	# Only update movement highlights if it's the local player's turn and the turn is actually active
+	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active():
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Immediately update movement range from the new position
