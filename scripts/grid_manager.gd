@@ -24,6 +24,10 @@ var movement_source_position: Vector2i = Vector2i.ZERO  # Source position for cu
 var grid_borders_parent: Node2D = null
 var grid_borders_visible: bool = false
 
+# Character position tracking
+var occupied_positions: Dictionary = {}  # Vector2i -> BaseCharacter
+var character_positions: Dictionary = {}  # BaseCharacter -> Vector2i
+
 # Signals
 signal tile_clicked(grid_position: Vector2i)
 signal tile_hovered(grid_position: Vector2i)  # New signal for tile hover events
@@ -91,14 +95,20 @@ func is_position_valid(grid_position: Vector2i) -> bool:
 	return grid_position.x >= -grid_width/2 and grid_position.x < grid_width/2 and \
 		   grid_position.y >= -grid_height/2 and grid_position.y < grid_height/2
 
-func is_position_walkable(grid_position: Vector2i) -> bool:
-	"""Check if a grid position is walkable (not blocked by obstacles)"""
+func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharacter = null) -> bool:
+	"""Check if a grid position is walkable (not blocked by obstacles or characters)"""
 	if not tilemap_layer:
 		return is_position_valid(grid_position)
 	
 	# Check if position is valid first
 	if not is_position_valid(grid_position):
 		return false
+	
+	# Check if position is occupied by a character (but allow the moving character to pass through their own position)
+	if is_position_occupied_by_character(grid_position):
+		var occupying_character = get_character_at_position(grid_position)
+		if occupying_character != moving_character:
+			return false
 	
 	# Get tile data at position
 	var tile_data: TileData = tilemap_layer.get_cell_tile_data(grid_position)
@@ -122,19 +132,63 @@ func is_position_walkable(grid_position: Vector2i) -> bool:
 	# - terrain 1 = "Non-pathable" or blocked terrain
 	return terrain == 0
 
-func get_valid_movement_positions(from_position: Vector2i, movement_range: int) -> Array[Vector2i]:
+func is_position_occupied_by_character(grid_position: Vector2i) -> bool:
+	"""Check if a grid position is occupied by a character"""
+	return occupied_positions.has(grid_position)
+
+func get_character_at_position(grid_position: Vector2i) -> BaseCharacter:
+	"""Get the character at a specific position, or null if none"""
+	return occupied_positions.get(grid_position, null)
+
+func register_character_position(character: BaseCharacter, grid_position: Vector2i) -> void:
+	"""Register a character's position on the grid"""
+	# Remove character from previous position if it exists
+	if character_positions.has(character):
+		var old_position = character_positions[character]
+		occupied_positions.erase(old_position)
+	
+	# Register new position
+	character_positions[character] = grid_position
+	occupied_positions[grid_position] = character
+	
+	print("Registered character ", character.character_type, " at position ", grid_position)
+
+func unregister_character(character: BaseCharacter) -> void:
+	"""Remove a character from the grid tracking (e.g., when character is destroyed)"""
+	if character_positions.has(character):
+		var position = character_positions[character]
+		occupied_positions.erase(position)
+		character_positions.erase(character)
+		print("Unregistered character ", character.character_type, " from grid")
+
+func move_character_position(character: BaseCharacter, from_position: Vector2i, to_position: Vector2i) -> void:
+	"""Move a character from one position to another on the grid"""
+	# Validate that the character is currently at the from_position
+	if character_positions.get(character) != from_position:
+		print("Warning: Character ", character.character_type, " not found at expected position ", from_position)
+	
+	# Remove from old position
+	occupied_positions.erase(from_position)
+	
+	# Add to new position
+	character_positions[character] = to_position
+	occupied_positions[to_position] = character
+	
+	print("Moved character ", character.character_type, " from ", from_position, " to ", to_position)
+
+func get_valid_movement_positions(from_position: Vector2i, movement_range: int, moving_character: BaseCharacter = null) -> Array[Vector2i]:
 	"""Get all valid positions within movement range from a starting position using flood-fill pathfinding"""
-	var flood_fill_result = _flood_fill_pathfinding(from_position, movement_range)
+	var flood_fill_result = _flood_fill_pathfinding(from_position, movement_range, moving_character)
 	return flood_fill_result.reachable_positions
 
-func highlight_movement_range(from_position: Vector2i, movement_range: int) -> void:
+func highlight_movement_range(from_position: Vector2i, movement_range: int, moving_character: BaseCharacter = null) -> void:
 	"""Visually highlight tiles within movement range"""
 	clear_movement_highlights()
 	
 	# Store the source position for path calculation
 	movement_source_position = from_position
 	
-	var valid_positions: Array[Vector2i] = get_valid_movement_positions(from_position, movement_range)
+	var valid_positions: Array[Vector2i] = get_valid_movement_positions(from_position, movement_range, moving_character)
 	
 	for grid_pos in valid_positions:
 		_create_highlight_tile(grid_pos)
@@ -279,14 +333,14 @@ func _run_pathfinding_tests() -> void:
 	print("Press 'I' while hovering over a tile to get tile info")
 
 
-func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector2i]:
+func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1, moving_character: BaseCharacter = null) -> Array[Vector2i]:
 	"""Find a path from one position to another using flood-fill pathfinding"""
 	# Check if tilemap is available
 	if not tilemap_layer:
 		return []
 	
 	# Check if positions are valid and walkable
-	if not is_position_valid(from) or not is_position_valid(to) or not is_position_walkable(to):
+	if not is_position_valid(from) or not is_position_valid(to) or not is_position_walkable(to, moving_character):
 		return []
 	
 	# If trying to path to the same position, return empty path
@@ -295,7 +349,7 @@ func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector
 	
 	# Use flood-fill to find path and reachable positions
 	var movement_range = max_cost if max_cost != -1 else 999  # Use large number if no limit
-	var flood_fill_result = _flood_fill_pathfinding(from, movement_range)
+	var flood_fill_result = _flood_fill_pathfinding(from, movement_range, moving_character)
 	
 	# Check if target is reachable
 	if to not in flood_fill_result.reachable_positions:
@@ -316,7 +370,7 @@ func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1) -> Array[Vector
 	
 	return path
 
-func _flood_fill_pathfinding(from_position: Vector2i, movement_range: int) -> Dictionary:
+func _flood_fill_pathfinding(from_position: Vector2i, movement_range: int, moving_character: BaseCharacter = null) -> Dictionary:
 	"""
 	Unified flood-fill algorithm for both pathfinding and movement range calculation
 	Returns: {
@@ -365,7 +419,7 @@ func _flood_fill_pathfinding(from_position: Vector2i, movement_range: int) -> Di
 				continue
 			
 			# Skip if position is invalid or not walkable
-			if not is_position_valid(next_pos) or not is_position_walkable(next_pos):
+			if not is_position_valid(next_pos) or not is_position_walkable(next_pos, moving_character):
 				continue
 			
 			# Skip if we've already visited this position with a lower or equal cost

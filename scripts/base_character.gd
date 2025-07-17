@@ -68,6 +68,10 @@ func _exit_tree() -> void:
 	if animated_sprite and animated_sprite.animation_finished.is_connected(_on_animation_finished):
 		animated_sprite.animation_finished.disconnect(_on_animation_finished)
 	
+	# Unregister from grid manager
+	if grid_manager:
+		grid_manager.unregister_character(self)
+	
 	# Clear references
 	grid_manager = null
 	current_path.clear()
@@ -140,12 +144,12 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 		print("DEBUG: Target position is not valid")
 		return false
 	
-	if not grid_manager.is_position_walkable(target_position):
+	if not grid_manager.is_position_walkable(target_position, self):
 		print("DEBUG: Target position is not walkable")
 		return false
 	
 	# Find path to target position
-	var path: Array[Vector2i] = grid_manager.find_path(grid_position, target_position, current_movement_points)
+	var path: Array[Vector2i] = grid_manager.find_path(grid_position, target_position, current_movement_points, self)
 	
 	# Check if path exists and is within movement range
 	if path.size() == 0:
@@ -212,6 +216,10 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	target_grid_position = path[-1]
 	
 	print("DEBUG: Updated grid position from ", old_position, " to ", grid_position)
+	
+	# Update grid manager position tracking
+	if grid_manager:
+		grid_manager.move_character_position(self, old_position, grid_position)
 	
 	# Emit movement completed signal for grid manager updates
 	movement_completed.emit(grid_position)
@@ -377,6 +385,8 @@ func set_grid_position(new_position: Vector2i) -> void:
 	target_grid_position = new_position
 	if grid_manager:
 		global_position = grid_manager.grid_to_world(grid_position)
+		# Register character position with grid manager
+		grid_manager.register_character_position(self, grid_position)
 
 func take_damage(damage: int) -> void:
 	"""Apply damage to the character"""
@@ -450,6 +460,8 @@ func set_character_state(state: Dictionary) -> void:
 	# Update world position
 	if grid_manager:
 		global_position = grid_manager.grid_to_world(grid_position)
+		# Register character position with grid manager
+		grid_manager.register_character_position(self, grid_position)
 	
 	# Emit stat updates only for local player
 	if get_multiplayer_authority() == multiplayer.get_unique_id():

@@ -1,1 +1,1 @@
-- can path through other players
+- brief movement range flash before switching player turns

@@ -478,8 +478,8 @@ func _connect_systems() -> void:
 		# Set grid manager reference
 		character.grid_manager = grid_manager
 		
-		# Position character in world coordinates
-		character.global_position = grid_manager.grid_to_world(character.grid_position)
+		# Position character in world coordinates and register with grid manager
+		character.set_grid_position(character.grid_position)
 		
 		# Connect character signals to UI updates (only for local player)
 		if peer_id == multiplayer.get_unique_id():
@@ -632,7 +632,7 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and current > 0:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
-			grid_manager.highlight_movement_range(current_turn_character.grid_position, current)
+			grid_manager.highlight_movement_range(current_turn_character.grid_position, current, current_turn_character)
 	elif grid_manager:
 		# Clear highlights if no movement points remaining or not local player's turn
 		grid_manager.clear_movement_highlights()
@@ -662,7 +662,7 @@ func _on_character_selected() -> void:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Show movement range when selected
-			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points)
+			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points, current_turn_character)
 			
 			if chat_panel:
 				chat_panel.add_system_message(current_turn_character.character_type + " selected - Movement range highlighted")
@@ -718,7 +718,7 @@ func _on_movement_completed(new_position: Vector2i) -> void:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Immediately update movement range from the new position
-			grid_manager.highlight_movement_range(new_position, current_turn_character.current_movement_points)
+			grid_manager.highlight_movement_range(new_position, current_turn_character.current_movement_points, current_turn_character)
 			if chat_panel:
 				chat_panel.add_system_message("Movement range updated from new position: " + str(new_position))
 
@@ -740,7 +740,7 @@ func _on_turn_started(character: BaseCharacter) -> void:
 			
 			# Show movement range for the current character
 			if grid_manager and current_turn_character.current_movement_points > 0:
-				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points)
+				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points, current_turn_character)
 	else:
 		# If it's not the local player's turn, clear movement highlights
 		if grid_manager:
