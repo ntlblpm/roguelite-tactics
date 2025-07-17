@@ -61,7 +61,7 @@ func _on_confirmed() -> void:
 	else:
 		_show_error("Invalid IP address format")
 
-func _on_text_submitted(text: String) -> void:
+func _on_text_submitted(_text: String) -> void:
 	"""Handle text submission (Enter key)"""
 	_on_confirmed()
 

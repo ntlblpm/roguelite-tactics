@@ -33,40 +33,33 @@ func _setup_ip_dialog() -> void:
 
 func _on_host_run_pressed() -> void:
 	## Handle HOST RUN button press - directly start hosting and go to lobby
-	print("HOST RUN selected - Starting host and opening lobby...")
 	
 	if NetworkManager.create_host("Host"):
-		print("Host created successfully, navigating to lobby...")
 		get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
 	else:
-		print("Failed to create host")
 		# TODO: Show error dialog to user
+		pass
 
 func _on_join_run_pressed() -> void:
 	## Handle JOIN RUN button press - show IP dialog and directly join
-	print("JOIN RUN selected - Opening IP input dialog...")
 	ip_dialog.reset_dialog()
 	ip_dialog.popup_centered()
 
 func _on_ip_confirmed(ip_address: String) -> void:
 	"""Handle IP confirmation from dialog - directly join the game"""
-	print("Attempting to join game at: ", ip_address)
 	
 	if NetworkManager.join_host(ip_address, "Player"):
-		print("Connection attempt started, navigating to lobby...")
 		get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
 	else:
-		print("Failed to start connection")
 		# TODO: Show error dialog to user
+		pass
 
 func _on_sanctum_pressed() -> void:
 	"""Handle SANCTUM button press - opens character progression and roster management"""
-	print("SANCTUM selected - Opening character progression...")
 	get_tree().change_scene_to_file("res://scenes/Sanctum.tscn")
 
 func _on_exit_pressed() -> void:
 	"""Handle EXIT button press - quit the game"""
-	print("Exiting game...")
 	get_tree().quit()
 
 func _input(event: InputEvent) -> void:

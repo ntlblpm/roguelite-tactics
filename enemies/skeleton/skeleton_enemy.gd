@@ -26,22 +26,16 @@ func _ready() -> void:
 	current_initiative = base_initiative
 	
 	super()
-	
-	print("Skeleton created with stats: ", get_stats_summary())
 
 ## Combat Implementation
 
 func _attempt_attack() -> void:
 	"""Attempt to attack the current target using Attack1 animation"""
 	if not current_target:
-		print("Skeleton has no target to attack")
 		return
 	
 	if not _can_attack_target(current_target):
-		print("Skeleton cannot attack target: insufficient AP or out of range")
 		return
-	
-	print("Skeleton attacking ", current_target.character_type, " for ", SKELETON_ATTACK_DAMAGE, " damage")
 	
 	# Play attack animation
 	_play_attack_animation()
@@ -71,8 +65,6 @@ func _play_attack_animation() -> void:
 	# Play Attack1 animation with direction
 	var animation_name = "Attack1" + GameConstants.get_direction_suffix(direction_to_target)
 	animated_sprite.play(animation_name)
-	
-	print("Skeleton playing attack animation: ", animation_name)
 
 func _wait_for_attack_animation() -> void:
 	"""Wait for the attack animation to finish"""
@@ -88,12 +80,7 @@ func _deal_damage_to_target(target: BaseCharacter) -> void:
 	if not target or target.is_dead:
 		return
 	
-	print("Skeleton deals ", SKELETON_ATTACK_DAMAGE, " damage to ", target.character_type)
 	target.take_damage(SKELETON_ATTACK_DAMAGE)
-	
-	# Check if target died
-	if target.current_health_points <= 0:
-		print("Skeleton has defeated ", target.character_type, "!")
 
 ## Override Base Enemy Methods
 
@@ -117,7 +104,6 @@ func _is_target_in_attack_range(target: BaseCharacter) -> bool:
 
 func _handle_death() -> void:
 	"""Handle skeleton death with flavor text"""
-	print("The skeleton crumbles to dust!")
 	super()
 
 ## Animation Handling

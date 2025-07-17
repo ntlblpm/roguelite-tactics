@@ -79,7 +79,6 @@ func get_class_experience(character_class: String) -> int:
 func add_experience(character_class: String, amount: int) -> void:
 	"""Add experience to a specific class and handle level ups"""
 	if character_class not in CLASS_NAMES:
-		print("Warning: Unknown class name: ", character_class)
 		return
 	
 	progression_data.class_experience[character_class] += amount
@@ -102,7 +101,6 @@ func _check_for_level_up(character_class: String) -> void:
 			current_level += 1
 			progression_data.class_levels[character_class] = current_level
 			level_gained.emit(character_class, current_level)
-			print(character_class, " leveled up to level ", current_level, "!")
 		else:
 			break
 
@@ -173,24 +171,20 @@ func save_progression_data() -> void:
 	"""Save progression data to local file system"""
 	var file: FileAccess = FileAccess.open(SAVE_FILE_PATH, FileAccess.WRITE)
 	if file == null:
-		print("Error: Could not open save file for writing")
 		return
 	
 	var json_string: String = JSON.stringify(progression_data)
 	file.store_string(json_string)
 	file.close()
-	print("Progression data saved successfully")
 
 func load_progression_data() -> void:
 	"""Load progression data from local file system"""
 	if not FileAccess.file_exists(SAVE_FILE_PATH):
-		print("No save file found, using default progression data")
 		save_progression_data() # Create initial save file
 		return
 	
 	var file: FileAccess = FileAccess.open(SAVE_FILE_PATH, FileAccess.READ)
 	if file == null:
-		print("Error: Could not open save file for reading")
 		return
 	
 	var json_string: String = file.get_as_text()
@@ -200,14 +194,12 @@ func load_progression_data() -> void:
 	var parse_result: Error = json.parse(json_string)
 	
 	if parse_result != OK:
-		print("Error: Could not parse save file JSON")
 		return
 	
 	var loaded_data: Dictionary = json.data
 	
 	# Merge loaded data with default structure to handle version updates
 	_merge_progression_data(loaded_data)
-	print("Progression data loaded successfully")
 
 func _merge_progression_data(loaded_data: Dictionary) -> void:
 	"""Merge loaded data with default structure to handle missing fields"""
@@ -240,5 +232,4 @@ func reset_progression() -> void:
 		"roster_upgrades": {},
 		"total_experience": 0
 	}
-	save_progression_data()
-	print("Progression data reset") 
+	save_progression_data() 

@@ -38,9 +38,6 @@ func _setup_progression_manager() -> void:
 		progression_manager.experience_gained.connect(_on_experience_gained)
 		progression_manager.level_gained.connect(_on_level_gained)
 		progression_manager.upgrade_purchased.connect(_on_upgrade_purchased)
-		print("Connected to ProgressionManager autoload")
-	else:
-		print("Error: ProgressionManager autoload not found")
 	
 	# Load initial data
 	_refresh_current_display()
@@ -227,37 +224,31 @@ func _on_upgrade_button_pressed(character_class: String, upgrade_id: String) -> 
 			_update_true_tab()
 		else:
 			_update_class_tab(current_tab)
-		
-		print("Purchased upgrade: ", upgrade_id, " for ", character_class)
 
 func _on_tab_changed(tab_index: int) -> void:
 	"""Handle tab change"""
 	var tab_names: Array[String] = ["True", "Swordsman", "Archer", "Pyromancer"]
 	if tab_index < tab_names.size():
 		current_tab = tab_names[tab_index]
-		print("Switched to tab: ", current_tab)
 
 func _on_back_button_pressed() -> void:
 	"""Handle back button press"""
-	print("Returning to main menu...")
 	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
 
 func _on_experience_gained(character_class: String, amount: int) -> void:
 	"""Handle experience gained signal"""
-	print("Experience gained: ", amount, " for ", character_class)
 	# Refresh displays if needed
 	_refresh_current_display()
 
 func _on_level_gained(character_class: String, new_level: int) -> void:
 	"""Handle level gained signal"""
-	print("Level up! ", character_class, " reached level ", new_level)
 	# Refresh displays to show new available points
 	_refresh_current_display()
 
 func _on_upgrade_purchased(character_class: String, upgrade_id: String) -> void:
 	"""Handle upgrade purchased signal"""
-	print("Upgrade purchased: ", upgrade_id, " for ", character_class)
 	# Display is already refreshed in _on_upgrade_button_pressed
+	pass
 
 func _refresh_current_display() -> void:
 	"""Refresh the currently visible tab"""

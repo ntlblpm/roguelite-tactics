@@ -56,14 +56,12 @@ func _setup_grid_borders_system() -> void:
 func set_tilemap_layer(layer: TileMapLayer) -> void:
 	"""Set the reference to the TileMapLayer"""
 	tilemap_layer = layer
-	if tilemap_layer:
-		print("Grid manager connected to TileMapLayer")
 
 func refresh_pathfinding_grid() -> void:
 	"""Refresh the pathfinding grid to match current tilemap state"""
 	# With flood-fill pathfinding, this is essentially a no-op
 	# since we always check walkability in real-time during flood-fill
-	print("Pathfinding grid refresh completed (using flood-fill pathfinding)")
+	pass
 
 func world_to_grid(world_position: Vector2) -> Vector2i:
 	"""Convert world coordinates to grid coordinates"""
@@ -82,8 +80,8 @@ func grid_to_world(grid_position: Vector2i) -> Vector2:
 	if not tilemap_layer:
 		# Fallback calculation if no tilemap
 		return Vector2(
-			grid_position.x * tile_size.x + tile_size.x / 2,
-			grid_position.y * tile_size.y + tile_size.y / 2
+			grid_position.x * tile_size.x + tile_size.x / 2.0,
+			grid_position.y * tile_size.y + tile_size.y / 2.0
 		)
 	
 	# Use TileMapLayer's built-in coordinate conversion
@@ -92,8 +90,8 @@ func grid_to_world(grid_position: Vector2i) -> Vector2:
 
 func is_position_valid(grid_position: Vector2i) -> bool:
 	"""Check if a grid position is within valid bounds"""
-	return grid_position.x >= -grid_width/2 and grid_position.x < grid_width/2 and \
-		   grid_position.y >= -grid_height/2 and grid_position.y < grid_height/2
+	return grid_position.x >= -(grid_width / 2) and grid_position.x < (grid_width / 2) and \
+		   grid_position.y >= -(grid_height / 2) and grid_position.y < (grid_height / 2)
 
 func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharacter = null) -> bool:
 	"""Check if a grid position is walkable (not blocked by obstacles or characters)"""
@@ -124,7 +122,6 @@ func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharact
 	
 	# Ensure terrain set is valid (should be 0-4 based on tileset configuration)
 	if terrain_set < 0 or terrain_set > 4:
-		print("Warning: Invalid terrain set ", terrain_set, " at position ", grid_position)
 		return false
 	
 	# For all terrain sets in the isometric tileset:
@@ -150,31 +147,22 @@ func register_character_position(character: BaseCharacter, grid_position: Vector
 	# Register new position
 	character_positions[character] = grid_position
 	occupied_positions[grid_position] = character
-	
-	print("Registered character ", character.character_type, " at position ", grid_position)
 
 func unregister_character(character: BaseCharacter) -> void:
 	"""Remove a character from the grid tracking (e.g., when character is destroyed)"""
 	if character_positions.has(character):
-		var position = character_positions[character]
-		occupied_positions.erase(position)
+		var character_position = character_positions[character]
+		occupied_positions.erase(character_position)
 		character_positions.erase(character)
-		print("Unregistered character ", character.character_type, " from grid")
 
 func move_character_position(character: BaseCharacter, from_position: Vector2i, to_position: Vector2i) -> void:
 	"""Move a character from one position to another on the grid"""
-	# Validate that the character is currently at the from_position
-	if character_positions.get(character) != from_position:
-		print("Warning: Character ", character.character_type, " not found at expected position ", from_position)
-	
 	# Remove from old position
 	occupied_positions.erase(from_position)
 	
 	# Add to new position
 	character_positions[character] = to_position
 	occupied_positions[to_position] = character
-	
-	print("Moved character ", character.character_type, " from ", from_position, " to ", to_position)
 
 func get_valid_movement_positions(from_position: Vector2i, movement_range: int, moving_character: BaseCharacter = null) -> Array[Vector2i]:
 	"""Get all valid positions within movement range from a starting position using flood-fill pathfinding"""
@@ -268,8 +256,6 @@ func _update_path_preview(destination: Vector2i) -> void:
 	
 	current_path_highlights = path
 
-
-
 func clear_movement_highlights() -> void:
 	"""Remove all movement highlight visuals"""
 	if highlight_tiles_parent:
@@ -310,13 +296,12 @@ func _input(event: InputEvent) -> void:
 				# Refresh pathfinding grid
 				refresh_pathfinding_grid()
 			KEY_I:
-				# Print tile info for position under mouse
+				# Get tile info for position under mouse
 				var mouse_grid_pos = world_to_grid(get_global_mouse_position())
 				debug_print_tile_info(mouse_grid_pos)
 
 func _run_pathfinding_tests() -> void:
 	"""Run a series of pathfinding tests to validate the fixes"""
-	print("=== Running Pathfinding Validation Tests ===")
 	
 	# Test 1: Valid path on walkable terrain
 	debug_test_pathfinding(Vector2i(0, 0), Vector2i(3, 3))
@@ -327,11 +312,6 @@ func _run_pathfinding_tests() -> void:
 	
 	# Test 3: Try a longer path that might go through blocked terrain
 	debug_test_pathfinding(Vector2i(-3, -3), Vector2i(5, 5))
-	
-	print("=== Pathfinding Tests Complete ===")
-	print("Press 'R' to refresh pathfinding grid")
-	print("Press 'I' while hovering over a tile to get tile info")
-
 
 func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1, moving_character: BaseCharacter = null) -> Array[Vector2i]:
 	"""Find a path from one position to another using flood-fill pathfinding"""
@@ -438,48 +418,17 @@ func _flood_fill_pathfinding(from_position: Vector2i, movement_range: int, movin
 
 func get_grid_bounds() -> Rect2i:
 	"""Get the bounds of the grid"""
-	return Rect2i(-grid_width/2, -grid_height/2, grid_width, grid_height)
+	var half_width: int = grid_width / 2
+	var half_height: int = grid_height / 2
+	return Rect2i(-half_width, -half_height, grid_width, grid_height)
 
 func debug_print_tile_info(grid_position: Vector2i) -> void:
 	"""Debug function to print information about a tile"""
-	print("=== Tile Info for ", grid_position, " ===")
-	print("Valid: ", is_position_valid(grid_position))
-	print("Walkable: ", is_position_walkable(grid_position))
-	print("World position: ", grid_to_world(grid_position))
-	
-	if tilemap_layer:
-		var tile_data: TileData = tilemap_layer.get_cell_tile_data(grid_position)
-		if tile_data:
-			print("Terrain set: ", tile_data.terrain_set)
-			print("Terrain: ", tile_data.terrain)
-		else:
-			print("No tile data found")
-	
-	# Also check A* grid state
-	# With flood-fill pathfinding, there's no A* grid state to check
-	print("========================")
+	pass
 
 func debug_test_pathfinding(from: Vector2i, to: Vector2i) -> void:
 	"""Debug function to test pathfinding between two positions"""
-	print("=== Testing Pathfinding from ", from, " to ", to, " ===")
-	
-	print("From position walkable: ", is_position_walkable(from))
-	print("To position walkable: ", is_position_walkable(to))
-	
-	var path = find_path(from, to)
-	if path.size() > 0:
-		print("Path found with ", path.size(), " steps: ", path)
-		print("Validating each step:")
-		for i in range(path.size()):
-			var step = path[i]
-			var walkable = is_position_walkable(step)
-			print("  Step ", i + 1, ": ", step, " - Walkable: ", walkable)
-			if not walkable:
-				print("  ERROR: Non-walkable step detected!")
-	else:
-		print("No path found")
-	
-	print("================================") 
+	pass
 
 func show_grid_borders() -> void:
 	"""Display borders on all valid grid tiles"""
@@ -509,8 +458,10 @@ func _create_all_grid_borders() -> void:
 	_clear_grid_borders()
 	
 	# Only create borders for tiles that actually have tile data
-	for x in range(-grid_width/2, grid_width/2):
-		for y in range(-grid_height/2, grid_height/2):
+	var half_width: int = grid_width / 2
+	var half_height: int = grid_height / 2
+	for x in range(-half_width, half_width):
+		for y in range(-half_height, half_height):
 			var grid_pos = Vector2i(x, y)
 			if _has_tile_data(grid_pos):
 				_create_grid_border_tile(grid_pos)
@@ -567,7 +518,7 @@ func _clear_grid_borders() -> void:
 	"""Remove all grid border visuals"""
 	if grid_borders_parent:
 		for child in grid_borders_parent.get_children():
-			child.queue_free() 
+			child.queue_free()
 
 func _clear_path_highlights() -> void:
 	"""Clear all path highlight visuals"""

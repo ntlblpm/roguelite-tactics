@@ -33,17 +33,13 @@ func _ready() -> void:
 	_update_ui_state()
 	
 	# If connected, select the local player's class based on progression
-	if NetworkManager and NetworkManager.is_connected:
-		print("Lobby: Connected, setting up player info...")
+	if NetworkManager and NetworkManager.connected:
 		_setup_connected_state()
 		
 		# For hosts, refresh player list immediately since they already have their data
 		# For joiners, wait for initial player sync to complete
 		if NetworkManager.is_host:
 			_refresh_players_list()
-		else:
-			# Joiners will refresh the list when they receive the first player_connected or player_info_updated signal
-			print("Lobby: Waiting for initial player sync as joiner...")
 
 func _setup_ui() -> void:
 	"""Setup initial UI state"""
@@ -97,21 +93,21 @@ func _connect_signals() -> void:
 
 func _update_ui_state() -> void:
 	"""Update UI state based on network connection"""
-	var is_connected = NetworkManager and NetworkManager.is_connected
+	var network_connected = NetworkManager and NetworkManager.connected
 	var is_host = NetworkManager and NetworkManager.is_host
 	
 	# Network section - only show disconnect when connected
-	disconnect_button.visible = is_connected
+	disconnect_button.visible = network_connected
 	
 	# Class selection - always visible since we only enter lobby when connected
 	class_container.visible = true
 	
 	# Start game button - only visible when connected as host
-	start_game_button.visible = is_connected and is_host
+	start_game_button.visible = network_connected and is_host
 	start_game_button.text = "Start Run"
 	
 	# Status
-	if is_connected:
+	if network_connected:
 		if is_host:
 			status_label.text = "Hosting - Waiting for players..."
 		else:
@@ -160,10 +156,8 @@ func _select_class(selected_class: String) -> void:
 			button.text = class_key
 	
 	# Update network - only available when connected
-	if NetworkManager and NetworkManager.is_connected:
+	if NetworkManager and NetworkManager.connected:
 		NetworkManager.update_player_class(selected_class)
-	else:
-		print("Warning: Cannot select class - not connected to a game")
 
 func _create_player_display(player_info: NetworkManager.PlayerInfo) -> Control:
 	"""Create a display widget for a player"""
@@ -209,7 +203,7 @@ func _refresh_players_list() -> void:
 		child.queue_free()
 	player_displays.clear()
 	
-	if not NetworkManager or not NetworkManager.is_connected:
+	if not NetworkManager or not NetworkManager.connected:
 		return
 	
 	# Add all connected players
@@ -228,9 +222,9 @@ func _on_disconnect_pressed() -> void:
 
 func _on_start_game_pressed() -> void:
 	## Handle start game button press
-	var is_connected = NetworkManager and NetworkManager.is_connected
+	var network_connected = NetworkManager and NetworkManager.connected
 	
-	if not is_connected:
+	if not network_connected:
 		status_label.text = "Error: Not connected to a game"
 		return
 	
@@ -255,14 +249,12 @@ func _on_pyromancer_pressed() -> void:
 	_select_class("Pyromancer")
 
 # Network event handlers
-func _on_player_connected(peer_id: int, player_info: NetworkManager.PlayerInfo) -> void:
+func _on_player_connected(_peer_id: int, player_info: NetworkManager.PlayerInfo) -> void:
 	"""Handle when a new player connects"""
-	print("Player connected: ", player_info.player_name)
 	_refresh_players_list()
 
 func _on_player_disconnected(peer_id: int) -> void:
 	"""Handle when a player disconnects"""
-	print("Player disconnected: ", peer_id)
 	_refresh_players_list()
 
 func _on_player_info_updated(peer_id: int, player_info: NetworkManager.PlayerInfo) -> void:
@@ -286,14 +278,13 @@ func _on_disconnected_from_server() -> void:
 
 func _on_game_started() -> void:
 	"""Handle when the game starts"""
-	print("Game starting from lobby...")
 	# Transition to TestRoom scene
 	get_tree().change_scene_to_file("res://scenes/TestRoom.tscn")
 
 func _on_back_pressed() -> void:
 	"""Handle back button press"""
 	# Disconnect from network if connected
-	if NetworkManager and NetworkManager.is_connected:
+	if NetworkManager and NetworkManager.connected:
 		NetworkManager.disconnect_from_network()
 	
 	# Return to main menu

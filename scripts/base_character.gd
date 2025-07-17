@@ -36,6 +36,7 @@ signal health_changed(current: int, maximum: int)
 signal movement_points_changed(current: int, maximum: int)
 signal action_points_changed(current: int, maximum: int)
 signal turn_ended()
+@warning_ignore("unused_signal")
 signal character_selected()
 signal movement_completed(new_position: Vector2i)
 
@@ -56,8 +57,6 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	"""Cleanup when the character is being destroyed"""
-	print("=== CHARACTER CLEANUP ===")
-	print("Cleaning up character: ", character_type, " (Authority: ", get_multiplayer_authority(), ")")
 	
 	# Stop any running tweens
 	if movement_tween and movement_tween.is_valid():
@@ -79,8 +78,6 @@ func _exit_tree() -> void:
 	# Reset state to clean values
 	is_moving = false
 	is_dead = false
-	
-	print("=== CHARACTER CLEANUP COMPLETE ===")
 
 func _initialize_stats() -> void:
 	"""Initialize character stats to maximum values"""
@@ -104,7 +101,6 @@ func _setup_animation_signals() -> void:
 
 func _emit_stat_updates() -> void:
 	"""Emit all stat update signals for UI"""
-	print("DEBUG: ", character_type, " emitting stat updates - HP: ", current_health_points, "/", max_health_points, " MP: ", current_movement_points, "/", max_movement_points, " AP: ", current_action_points, "/", max_action_points)
 	health_changed.emit(current_health_points, max_health_points)
 	movement_points_changed.emit(current_movement_points, max_movement_points)
 	action_points_changed.emit(current_action_points, max_action_points)
@@ -117,35 +113,24 @@ func _play_animation(base_name: String, direction: GameConstants.Direction = cur
 	var animation_name: String = base_name + GameConstants.get_direction_suffix(direction)
 	if animated_sprite.sprite_frames.has_animation(animation_name):
 		animated_sprite.play(animation_name)
-	else:
-		print("Warning: Animation '", animation_name, "' not found!")
 
 # Input handling moved to GameController to avoid conflicts
 
 func attempt_move_to(target_position: Vector2i) -> bool:
 	"""Attempt to move to a grid position using pathfinding, consuming MP if successful"""
-	print("DEBUG: attempt_move_to called for target: ", target_position)
-	print("DEBUG: current grid_position: ", grid_position)
-	print("DEBUG: current_movement_points: ", current_movement_points)
-	print("DEBUG: Character authority: ", get_multiplayer_authority())
-	print("DEBUG: Local player ID: ", multiplayer.get_unique_id())
 	
 	# Only allow the character owner to initiate movement
 	if get_multiplayer_authority() != multiplayer.get_unique_id():
-		print("DEBUG: Cannot move - not the character owner")
 		return false
 	
 	if not grid_manager or is_moving:
-		print("DEBUG: No grid manager or already moving")
 		return false
 	
 	# Check if target position is valid and pathable
 	if not grid_manager.is_position_valid(target_position):
-		print("DEBUG: Target position is not valid")
 		return false
 	
 	if not grid_manager.is_position_walkable(target_position, self):
-		print("DEBUG: Target position is not walkable")
 		return false
 	
 	# Find path to target position
@@ -153,35 +138,26 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 	
 	# Check if path exists and is within movement range
 	if path.size() == 0:
-		print("No valid path to target position or not enough movement points!")
 		return false
-	
-	print("DEBUG: Found path with ", path.size(), " steps: ", path)
 	
 	# Calculate the actual movement cost of the path
 	var movement_cost: int = _calculate_path_cost(path)
 	
 	# Check if we have enough MP
 	if movement_cost > current_movement_points:
-		print("Not enough movement points! Need: ", movement_cost, " Have: ", current_movement_points)
 		return false
 	
 	# Execute the movement via RPC to synchronize across all clients
-	print("DEBUG: Executing networked movement to: ", path[-1])
 	_execute_networked_movement.rpc(path, movement_cost)
 	return true
 
 @rpc("any_peer", "call_local", "reliable")
 func _execute_networked_movement(path: Array[Vector2i], cost: int) -> void:
 	"""Execute movement across all clients (RPC method)"""
-	print("DEBUG: _execute_networked_movement called with path: ", path, " cost: ", cost)
-	print("DEBUG: RPC sender: ", multiplayer.get_remote_sender_id())
-	print("DEBUG: Character authority: ", get_multiplayer_authority())
 	
 	# Verify that the movement request is from the character owner
 	var sender_id = multiplayer.get_remote_sender_id()
 	if sender_id != get_multiplayer_authority() and sender_id != 0:  # 0 means local call
-		print("WARNING: Movement request from unauthorized peer: ", sender_id)
 		return
 	
 	_execute_path_movement(path, cost)
@@ -197,12 +173,9 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	if path.size() == 0:
 		return
 	
-	print("DEBUG: Executing path movement to: ", path[-1], " with cost: ", cost)
-	
 	# Consume movement points (only on the character owner's client)
 	if get_multiplayer_authority() == multiplayer.get_unique_id():
 		current_movement_points -= cost
-		print("DEBUG: MP consumed. New MP: ", current_movement_points, "/", max_movement_points)
 		
 		# Synchronize MP across all clients
 		_sync_movement_points.rpc(current_movement_points)
@@ -214,8 +187,6 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	var old_position = grid_position
 	grid_position = path[-1]
 	target_grid_position = path[-1]
-	
-	print("DEBUG: Updated grid position from ", old_position, " to ", grid_position)
 	
 	# Update grid manager position tracking
 	if grid_manager:
@@ -230,7 +201,6 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 @rpc("any_peer", "call_local", "reliable")
 func _sync_movement_points(new_mp: int) -> void:
 	"""Synchronize movement points across all clients"""
-	print("DEBUG: Syncing MP to: ", new_mp)
 	current_movement_points = new_mp
 	
 	# Only emit UI signals on the character owner's client
@@ -240,15 +210,12 @@ func _sync_movement_points(new_mp: int) -> void:
 @rpc("any_peer", "call_local", "reliable")
 func _sync_position(new_grid_position: Vector2i) -> void:
 	"""Synchronize character position across all clients"""
-	print("DEBUG: Syncing position to: ", new_grid_position)
 	grid_position = new_grid_position
 	target_grid_position = new_grid_position
 	
 	# Update world position
 	if grid_manager:
 		global_position = grid_manager.grid_to_world(grid_position)
-		print("DEBUG: Updated world position to: ", global_position)
-
 
 func _animate_path_movement(path: Array[Vector2i]) -> void:
 	"""Animate character movement along a path"""
@@ -267,10 +234,6 @@ func _animate_path_movement(path: Array[Vector2i]) -> void:
 	for grid_pos in path:
 		current_path.append(grid_manager.grid_to_world(grid_pos))
 	
-	print("DEBUG: Path construction - grid_path: ", path)
-	print("DEBUG: Path construction - final grid position should be: ", grid_position)
-	print("DEBUG: Path construction - world_path: ", current_path)
-	
 	# Calculate total duration based on path length
 	var total_duration: float = GameConstants.MOVEMENT_ANIMATION_DURATION * path.size()
 	
@@ -280,25 +243,20 @@ func _animate_path_movement(path: Array[Vector2i]) -> void:
 	movement_tween.set_trans(Tween.TRANS_SINE)
 	
 	# Use tween_method to smoothly interpolate through all path points
-	print("DEBUG: Starting path animation with ", current_path.size(), " points, duration: ", total_duration)
-	print("DEBUG: World path: ", current_path)
 	movement_tween.tween_method(_interpolate_along_current_path, 0.0, 1.0, total_duration)
 	movement_tween.tween_callback(_on_movement_complete)
 	
 	# Start with run animation in current direction, will be updated during movement
 	_play_animation(GameConstants.RUN_ANIMATION_PREFIX, current_facing_direction)
 
-
 func _interpolate_along_current_path(progress: float) -> void:
 	"""Interpolate character position along current_path based on progress (0.0 to 1.0)"""
 	if current_path.size() < 2:
-		print("DEBUG: current_path too small: ", current_path.size())
 		return
 	
 	# Special case: if we're at the very end, go to the final position
 	if progress >= 1.0:
 		global_position = current_path[-1]
-		print("DEBUG: Final progress reached, setting to last position: ", global_position)
 		return
 	
 	# Calculate which segment we're in and the local progress within that segment
@@ -318,10 +276,6 @@ func _interpolate_along_current_path(progress: float) -> void:
 	
 	# Update facing direction based on current movement direction
 	_update_facing_direction_for_movement(start_pos, end_pos)
-	
-	# Debug output (less verbose)
-	if int(progress * 100) % 20 == 0: # Only print every 20%
-		print("DEBUG: progress=", progress, " segment=", segment_index, " moving to: ", new_position)
 	
 	# Set the position
 	global_position = new_position
@@ -348,7 +302,6 @@ func _update_facing_direction_for_movement(start_pos: Vector2, end_pos: Vector2)
 			if not animated_sprite.animation.begins_with(GameConstants.RUN_ANIMATION_PREFIX):
 				_play_animation(GameConstants.RUN_ANIMATION_PREFIX, current_facing_direction)
 
-
 func _on_movement_complete() -> void:
 	"""Called when movement animation is complete"""
 	is_moving = false
@@ -356,28 +309,20 @@ func _on_movement_complete() -> void:
 	# Ensure visual position matches the final grid position
 	if grid_manager:
 		global_position = grid_manager.grid_to_world(grid_position)
-		print("DEBUG: Final position corrected to: ", global_position, " for grid: ", grid_position)
 	
 	# Return to idle animation in the current facing direction
 	_play_animation(GameConstants.IDLE_ANIMATION_PREFIX)
-	
-	print("Movement animation completed at grid position: ", grid_position, " - MP remaining: ", current_movement_points)
 
 func end_turn() -> void:
 	"""End character's turn and refresh resources"""
-	print("DEBUG: ", character_type, " ending turn - current MP: ", current_movement_points, " current AP: ", current_action_points)
 	_refresh_resources()
 	turn_ended.emit()
-	print("DEBUG: ", character_type, " turn ended - new MP: ", current_movement_points, " new AP: ", current_action_points)
 
 func _refresh_resources() -> void:
 	"""Refresh MP and AP to maximum values"""
-	print("DEBUG: ", character_type, " refreshing resources - before: MP=", current_movement_points, " AP=", current_action_points)
 	current_movement_points = max_movement_points
 	current_action_points = max_action_points
-	print("DEBUG: ", character_type, " refreshing resources - after: MP=", current_movement_points, " AP=", current_action_points)
 	_emit_stat_updates()
-	print("DEBUG: ", character_type, " emitted stat updates")
 
 func set_grid_position(new_position: Vector2i) -> void:
 	"""Set the character's grid position (for initial placement)"""
@@ -406,7 +351,6 @@ func heal(amount: int) -> void:
 
 func _handle_death() -> void:
 	"""Handle character death - override in subclasses for custom death messages"""
-	print(character_type, " has died!")
 	is_dead = true
 	_play_animation(GameConstants.DIE_ANIMATION_PREFIX)
 
@@ -445,7 +389,6 @@ func get_character_state() -> Dictionary:
 
 func set_character_state(state: Dictionary) -> void:
 	"""Set character state from synchronization data"""
-	print("DEBUG: Setting character state: ", state)
 	
 	grid_position = state.get("grid_position", Vector2i.ZERO)
 	target_grid_position = state.get("target_grid_position", Vector2i.ZERO)

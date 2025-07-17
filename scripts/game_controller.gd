@@ -62,8 +62,6 @@ func _ready() -> void:
 	
 	# Don't initialize multiplayer game immediately - defer to next frame to ensure clean state
 	call_deferred("_deferred_multiplayer_initialization")
-	
-	print("GameController setup complete, deferring multiplayer initialization...")
 
 func _deferred_multiplayer_initialization() -> void:
 	"""Initialize multiplayer game after ensuring clean state"""
@@ -79,11 +77,9 @@ func _deferred_multiplayer_initialization() -> void:
 	await get_tree().process_frame
 	
 	_initialize_multiplayer_game()
-	print("Deferred multiplayer game initialization complete!")
 
 func _exit_tree() -> void:
 	"""Cleanup when the scene is being destroyed"""
-	print("=== GAME CONTROLLER CLEANUP ===")
 	
 	# Reset spawning flag to prevent issues in next run
 	is_spawning_characters = false
@@ -130,8 +126,6 @@ func _exit_tree() -> void:
 			give_up_confirmation_dialog.confirmed.disconnect(_on_give_up_confirmed)
 		if give_up_confirmation_dialog.canceled.is_connected(_on_give_up_canceled):
 			give_up_confirmation_dialog.canceled.disconnect(_on_give_up_canceled)
-	
-	print("=== GAME CONTROLLER CLEANUP COMPLETE ===")
 
 func _initialize_systems() -> void:
 	"""Initialize core game systems"""
@@ -144,8 +138,6 @@ func _initialize_systems() -> void:
 	turn_manager = TurnManager.new()
 	turn_manager.name = "TurnManager"
 	add_child(turn_manager)
-	
-	print("Core systems initialized")
 
 func _setup_ui_references() -> void:
 	"""Setup references to UI elements"""
@@ -168,21 +160,14 @@ func _setup_ui_references() -> void:
 		
 		# Get confirmation dialog
 		give_up_confirmation_dialog = combat_ui.get_node("UILayer/MainUI/GiveUpConfirmationDialog")
-		
-		print("UI references setup complete")
 
 func _initialize_multiplayer_game() -> void:
 	"""Initialize the multiplayer game based on NetworkManager data"""
-	if not NetworkManager or not NetworkManager.is_connected:
-		print("ERROR: Cannot start game - not connected to a network")
+	if not NetworkManager or not NetworkManager.connected:
 		return
 	
 	# Get player data from NetworkManager
 	var players = NetworkManager.get_players_list()
-	print("=== INITIALIZING MULTIPLAYER GAME ===")
-	print("Local peer ID: ", multiplayer.get_unique_id())
-	print("Is host: ", NetworkManager.is_host)
-	print("Players count: ", players.size())
 	
 	if NetworkManager.is_host:
 		# Convert PlayerInfo objects to dictionaries for RPC transmission
@@ -195,7 +180,6 @@ func _initialize_multiplayer_game() -> void:
 				"class_levels": player_info.class_levels
 			})
 		
-		print("Host spawning characters for all players...")
 		# Host spawns all characters and broadcasts to all clients
 		_spawn_all_characters.rpc(players_data)
 		
@@ -203,7 +187,6 @@ func _initialize_multiplayer_game() -> void:
 		await _wait_for_all_characters_spawned(players_data.size())
 	else:
 		# Joining player - wait for character spawning RPC from host
-		print("Joining player waiting for character spawning from host...")
 		
 		# Wait for characters to be spawned via the host's RPC
 		await _wait_for_all_characters_spawned(players.size())
@@ -213,8 +196,6 @@ func _initialize_multiplayer_game() -> void:
 
 func _wait_for_all_characters_spawned(expected_count: int) -> void:
 	"""Wait for all characters to be properly spawned before proceeding"""
-	print("=== WAITING FOR CHARACTER SPAWNING ===")
-	print("Expected character count: ", expected_count)
 	
 	var max_attempts: int = 50  # 5 seconds at 10 FPS, increased for network latency
 	var attempts: int = 0
@@ -231,30 +212,14 @@ func _wait_for_all_characters_spawned(expected_count: int) -> void:
 					# Ensure character is properly initialized with stats
 					if character.max_health_points > 0 and character.character_type != "":
 						valid_character_count += 1
-					else:
-						print("Character for peer ", peer_id, " is not fully initialized yet")
-				else:
-					print("Character for peer ", peer_id, " has incorrect authority: ", character_authority, " (expected: ", peer_id, ")")
-		
-		print("Attempt ", attempts + 1, ": Found ", valid_character_count, " of ", expected_count, " valid characters")
 		
 		if valid_character_count >= expected_count:
-			print("All characters spawned and validated successfully!")
 			# Additional frame wait to ensure everything is settled
 			await get_tree().process_frame
 			return
 		
 		attempts += 1
 		await get_tree().create_timer(0.1).timeout  # Wait 100ms between checks
-	
-	print("WARNING: Timeout waiting for all characters to spawn. Proceeding with ", player_characters.size(), " characters")
-	print("Characters status:")
-	for peer_id in player_characters:
-		var character = player_characters[peer_id]
-		if character and is_instance_valid(character):
-			print("  Peer ", peer_id, ": ", character.character_type, " Authority: ", character.get_multiplayer_authority(), " HP: ", character.max_health_points)
-		else:
-			print("  Peer ", peer_id, ": INVALID CHARACTER")
 
 @rpc("any_peer", "call_remote", "reliable")
 func _request_game_state() -> void:
@@ -263,7 +228,6 @@ func _request_game_state() -> void:
 		return
 	
 	var sender_id = multiplayer.get_remote_sender_id()
-	print("Host received game state request from peer: ", sender_id)
 	
 	# Send current game state to the requesting player
 	var players = NetworkManager.get_players_list()
@@ -294,10 +258,6 @@ func _request_game_state() -> void:
 @rpc("authority", "call_local", "reliable")
 func _receive_game_state(players_data: Array, character_states: Dictionary, turn_state: Dictionary) -> void:
 	"""Receive and process game state from host (for late joiners)"""
-	print("=== RECEIVING GAME STATE AS LATE JOINER ===")
-	print("Received players data: ", players_data)
-	print("Received character states: ", character_states.keys())
-	print("Received turn state: ", turn_state)
 	
 	# Spawn all characters first - this already has duplicate protection
 	_spawn_all_characters_internal(players_data)
@@ -311,28 +271,21 @@ func _receive_game_state(players_data: Array, character_states: Dictionary, turn
 			var character = player_characters[peer_id]
 			if character and is_instance_valid(character):
 				character.set_character_state(character_states[peer_id])
-				print("Applied state to character for peer: ", peer_id)
 	
 	# Apply turn state
 	if turn_manager and turn_state.size() > 0:
 		turn_manager.sync_turn_state(turn_state)
-		print("Applied turn state")
 
 @rpc("any_peer", "call_local", "reliable")
 func _spawn_all_characters(players_data: Array) -> void:
 	"""Spawn characters for all players (called by host)"""
-	print("=== SPAWNING CHARACTERS (RPC) ===")
-	print("RPC called by peer: ", multiplayer.get_remote_sender_id())
-	print("Local peer ID: ", multiplayer.get_unique_id())
 	
 	# Only host should initiate character spawning to prevent conflicts
 	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
-		print("WARNING: Non-host peer attempted to spawn characters, ignoring")
 		return
 	
 	# Prevent duplicate spawning
 	if is_spawning_characters:
-		print("WARNING: Character spawning already in progress, ignoring duplicate request")
 		return
 	
 	_spawn_all_characters_internal(players_data)
@@ -340,21 +293,15 @@ func _spawn_all_characters(players_data: Array) -> void:
 func _spawn_all_characters_internal(players_data: Array) -> void:
 	"""Internal method to spawn characters (shared by RPC and local calls)"""
 	if is_spawning_characters:
-		print("WARNING: Character spawning already in progress, ignoring duplicate request")
 		return
 	
 	is_spawning_characters = true
-	
-	print("=== SPAWNING CHARACTERS (INTERNAL) ===")
-	print("Spawning characters for ", players_data.size(), " players")
-	print("Player data received: ", players_data)
 	
 	# Clear any existing characters first to prevent duplicates
 	await _clear_existing_characters()
 	
 	# Extra validation - ensure we're still in a valid state to spawn
-	if not NetworkManager or not NetworkManager.is_connected:
-		print("ERROR: Network disconnected during spawning, aborting")
+	if not NetworkManager or not NetworkManager.connected:
 		is_spawning_characters = false
 		return
 	
@@ -363,27 +310,19 @@ func _spawn_all_characters_internal(players_data: Array) -> void:
 		var position_index = i % starting_positions.size()
 		var start_position = starting_positions[position_index]
 		
-		print("Processing player ", i + 1, ": ", player_data)
 		_spawn_character(player_data.peer_id, player_data.selected_class, start_position)
 	
 	# Spawn enemies after players
 	_spawn_enemies()
 	
 	is_spawning_characters = false
-	
-	print("=== SPAWNING COMPLETE ===")
-	print("Total characters spawned: ", player_characters.size())
-	print("Total enemies spawned: ", enemy_characters.size())
-	print("Characters by peer ID: ", player_characters.keys())
 
 func _clear_existing_characters() -> void:
 	"""Clear any existing characters to prevent duplicates"""
-	print("Clearing existing characters: ", player_characters.size())
 	
 	for peer_id in player_characters.keys():
 		var character = player_characters[peer_id]
 		if character and is_instance_valid(character):
-			print("Clearing existing character for peer: ", peer_id)
 			# Disconnect signals before freeing
 			if character.health_changed.is_connected(_on_health_changed):
 				character.health_changed.disconnect(_on_health_changed)
@@ -401,19 +340,16 @@ func _clear_existing_characters() -> void:
 	player_characters.clear()
 	
 	# Clear enemies too
-	print("Clearing existing enemies: ", enemy_characters.size())
 	for enemy in enemy_characters:
 		if enemy and is_instance_valid(enemy):
-			print("Clearing existing enemy: ", enemy.character_type)
 			enemy.queue_free()
 	
 	enemy_characters.clear()
 	
 	# Wait a frame to ensure cleanup is complete
 	await get_tree().process_frame
-	print("Character cleanup complete")
 
-func _spawn_character(peer_id: int, character_class: String, position: Vector2i) -> void:
+func _spawn_character(peer_id: int, character_class: String, grid_position: Vector2i) -> void:
 	"""Spawn a character for a specific player"""
 	var character_scene: PackedScene
 	
@@ -426,7 +362,6 @@ func _spawn_character(peer_id: int, character_class: String, position: Vector2i)
 		"Pyromancer":
 			character_scene = pyromancer_scene
 		_:
-			print("Unknown class: ", character_class, " defaulting to Swordsman")
 			character_scene = swordsman_scene
 	
 	# Instantiate the character
@@ -437,8 +372,8 @@ func _spawn_character(peer_id: int, character_class: String, position: Vector2i)
 	character.set_multiplayer_authority(peer_id)
 	
 	# Position character
-	character.grid_position = position
-	character.target_grid_position = position
+	character.grid_position = grid_position
+	character.target_grid_position = grid_position
 	
 	# Add to scene
 	$CombatArea.add_child(character)
@@ -448,21 +383,16 @@ func _spawn_character(peer_id: int, character_class: String, position: Vector2i)
 	
 	# Ensure character renders above movement highlights
 	character.z_index = 2
-	
-	print("Spawned ", character_class, " for peer ", peer_id, " at position ", position)
 
 func _spawn_enemies() -> void:
 	"""Spawn enemy characters for testing"""
-	print("=== SPAWNING ENEMIES ===")
 	
 	# Spawn skeletons at predefined positions
 	for i in range(min(1, enemy_spawn_positions.size())):  # Spawn up to 1 skeleton
 		var spawn_position = enemy_spawn_positions[i]
 		_spawn_enemy("Skeleton", spawn_position, i)
-	
-	print("Spawned ", enemy_characters.size(), " enemies")
 
-func _spawn_enemy(enemy_type: String, position: Vector2i, enemy_id: int) -> void:
+func _spawn_enemy(enemy_type: String, grid_position: Vector2i, enemy_id: int) -> void:
 	"""Spawn a single enemy"""
 	var enemy_scene: PackedScene
 	
@@ -471,11 +401,9 @@ func _spawn_enemy(enemy_type: String, position: Vector2i, enemy_id: int) -> void
 		"Skeleton":
 			enemy_scene = skeleton_scene
 		_:
-			print("Unknown enemy type: ", enemy_type, " defaulting to Skeleton")
 			enemy_scene = skeleton_scene
 	
 	if not enemy_scene:
-		print("ERROR: No scene found for enemy type: ", enemy_type)
 		return
 	
 	# Instantiate the enemy
@@ -486,8 +414,8 @@ func _spawn_enemy(enemy_type: String, position: Vector2i, enemy_id: int) -> void
 	enemy.set_multiplayer_authority(1)
 	
 	# Position enemy
-	enemy.grid_position = position
-	enemy.target_grid_position = position
+	enemy.grid_position = grid_position
+	enemy.target_grid_position = grid_position
 	
 	# Add to scene
 	$CombatArea.add_child(enemy)
@@ -497,8 +425,6 @@ func _spawn_enemy(enemy_type: String, position: Vector2i, enemy_id: int) -> void
 	
 	# Ensure enemy renders above movement highlights
 	enemy.z_index = 2
-	
-	print("Spawned ", enemy_type, " at position ", position)
 
 func _connect_systems() -> void:
 	"""Connect all systems together"""
@@ -507,13 +433,9 @@ func _connect_systems() -> void:
 		grid_manager.set_tilemap_layer(tilemap_layer)
 	
 	# Setup all player characters
-	print("=== CONNECTING SYSTEMS ===")
-	print("Player characters dictionary size: ", player_characters.size())
-	print("Player characters: ", player_characters.keys())
 	
 	# At this point, characters should already be validated by _wait_for_all_characters_spawned
 	if player_characters.size() == 0:
-		print("ERROR: No characters found after validation - this should not happen!")
 		return
 	
 	var character_list: Array[BaseCharacter] = []
@@ -522,10 +444,7 @@ func _connect_systems() -> void:
 	for peer_id in player_characters:
 		var character = player_characters[peer_id]
 		if not character or not is_instance_valid(character):
-			print("ERROR: Invalid character for peer ", peer_id, " after validation!")
 			continue
-		
-		print("Processing character for peer ", peer_id, ": ", character.character_type, " at ", character.grid_position)
 		
 		# Set grid manager reference
 		character.grid_manager = grid_manager
@@ -541,18 +460,13 @@ func _connect_systems() -> void:
 			character.action_points_changed.connect(_on_action_points_changed)
 			character.character_selected.connect(_on_character_selected)
 			character.movement_completed.connect(_on_movement_completed)
-			print("Connected UI signals for local player character: ", character.character_type)
 		
 		character_list.append(character)
 	
 	# Process enemy characters
-	print("Processing ", enemy_characters.size(), " enemies")
 	for enemy in enemy_characters:
 		if not enemy or not is_instance_valid(enemy):
-			print("ERROR: Invalid enemy character!")
 			continue
-		
-		print("Processing enemy: ", enemy.character_type, " at ", enemy.grid_position)
 		
 		# Set grid manager reference
 		enemy.grid_manager = grid_manager
@@ -562,10 +476,7 @@ func _connect_systems() -> void:
 		
 		character_list.append(enemy)
 	
-	print("Character list size: ", character_list.size())
-	
 	if character_list.size() == 0:
-		print("ERROR: No valid characters found for system connection!")
 		return
 	
 	# Connect grid manager tile clicks to character movement (only for local player)
@@ -582,7 +493,6 @@ func _connect_systems() -> void:
 		
 		# For non-host players, request current turn state from host
 		if not NetworkManager.is_host:
-			print("Requesting turn state synchronization from host...")
 			_request_turn_sync.rpc_id(1)
 		else:
 			# Host immediately updates UI and prepares to start
@@ -612,8 +522,6 @@ func _connect_systems() -> void:
 		grid_manager.show_grid_borders()
 		if chat_panel:
 			chat_panel.add_system_message("Grid borders enabled - Press G to toggle")
-	
-	print("All systems connected for ", player_characters.size(), " players")
 
 @rpc("any_peer", "call_remote", "reliable")
 func _request_turn_sync() -> void:
@@ -622,7 +530,6 @@ func _request_turn_sync() -> void:
 		return
 	
 	var sender_id = multiplayer.get_remote_sender_id()
-	print("Host received turn sync request from peer: ", sender_id)
 	
 	# Send current turn state to the requesting player
 	_sync_turn_state.rpc_id(sender_id)
@@ -633,16 +540,12 @@ func _sync_turn_state() -> void:
 	if not turn_manager:
 		return
 	
-	print("=== SYNCHRONIZING TURN STATE ===")
-	
 	# Only allow host to broadcast turn state to prevent conflicts
 	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
-		print("WARNING: Non-host attempted to sync turn state, ignoring")
 		return
 	
 	# Get current turn state from turn manager
 	var turn_state = turn_manager.get_turn_state()
-	print("Turn state: ", turn_state)
 	
 	# For non-host clients, sync the turn state from the received data
 	if not NetworkManager.is_host:
@@ -656,19 +559,15 @@ func _sync_turn_state() -> void:
 	var current_character = turn_manager.get_current_character()
 	if current_character:
 		_update_current_entity_display(current_character)
-		print("Current character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
 		
 		# Update stat displays if it's the local player's turn
 		if turn_manager.is_local_player_turn():
-			print("Updating stat displays for local player's turn")
 			if hp_text:
 				hp_text.text = "%d/%d" % [current_character.current_health_points, current_character.max_health_points]
 			if mp_text:
 				mp_text.text = "%d/%d" % [current_character.current_movement_points, current_character.max_movement_points]
 			if ap_text:
 				ap_text.text = "%d/%d" % [current_character.current_action_points, current_character.max_action_points]
-	else:
-		print("WARNING: No current character found during turn sync")
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Update HP display when character health changes"""
@@ -683,7 +582,6 @@ func _on_health_changed(current: int, maximum: int) -> void:
 
 func _on_movement_points_changed(current: int, maximum: int) -> void:
 	## Update MP display when movement points change
-	print("DEBUG: GameController received movement_points_changed signal - ", current, "/", maximum)
 	
 	# Only update UI for the local player's character
 	var sender_character = get_current_player_character()
@@ -693,14 +591,12 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 	# Update MP text only if this is the local player's character
 	if mp_text:
 		mp_text.text = "%d/%d" % [current, maximum]
-		print("DEBUG: Updated MP text to: ", mp_text.text)
-	else:
-		print("DEBUG: mp_text is null - UI not connected properly")
 	
 	# Update movement highlights only if it's the local player's turn AND the turn is actually active
 	# This prevents highlights from flashing during turn transitions when resources are refreshed
+	var current_turn_character: BaseCharacter = null
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current > 0:
-		var current_turn_character = turn_manager.get_current_character()
+		current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Double-check that this is not an AI character
 			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
@@ -711,13 +607,12 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 		# Clear highlights if no movement points remaining or not local player's turn or turn not active
 		grid_manager.clear_movement_highlights()
 		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
-			var current_turn_character = turn_manager.get_current_character()
+			current_turn_character = turn_manager.get_current_character()
 			if current_turn_character and not (current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled()):
 				chat_panel.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_action_points_changed(current: int, maximum: int) -> void:
 	## Update AP display when action points change
-	print("DEBUG: GameController received action_points_changed signal - ", current, "/", maximum)
 	
 	# Only update UI for the local player's character
 	var sender_character = get_current_player_character()
@@ -727,9 +622,6 @@ func _on_action_points_changed(current: int, maximum: int) -> void:
 	# Update AP text only if this is the local player's character
 	if ap_text:
 		ap_text.text = "%d/%d" % [current, maximum]
-		print("DEBUG: Updated AP text to: ", ap_text.text)
-	else:
-		print("DEBUG: ap_text is null - UI not connected properly")
 
 func _on_character_selected() -> void:
 	"""Handle when the character is selected"""
@@ -749,52 +641,41 @@ func _on_character_selected() -> void:
 
 func _on_tile_clicked(grid_position: Vector2i) -> void:
 	"""Handle when a tile is clicked"""
-	print("DEBUG: Tile clicked at: ", grid_position)
-	print("DEBUG: Turn manager exists: ", turn_manager != null)
-	print("DEBUG: Turn active: ", turn_manager.is_character_turn_active() if turn_manager else "N/A")
-	print("DEBUG: Is local player turn: ", turn_manager.is_local_player_turn() if turn_manager else "N/A")
 	
 	# Only allow input if it's the local player's turn AND the current character is not AI-controlled
+	var current_turn_character: BaseCharacter = null
 	if not turn_manager or not turn_manager.is_character_turn_active() or not turn_manager.is_local_player_turn():
 		if turn_manager and turn_manager.is_character_turn_active() and not turn_manager.is_local_player_turn():
-			var current_turn_character = turn_manager.get_current_character()
+			current_turn_character = turn_manager.get_current_character()
 			if current_turn_character and chat_panel:
 				var player_name = _get_player_name_for_character(current_turn_character)
 				chat_panel.add_system_message("It's " + player_name + "'s turn, not yours!")
 		return
 	
 	# Get the character whose turn it is
-	var current_turn_character = turn_manager.get_current_character()
+	current_turn_character = turn_manager.get_current_character()
 	if not current_turn_character:
-		print("DEBUG: No current turn character found")
 		return
 	
 	# IMPORTANT: Block input if the current character is AI-controlled (enemy)
 	if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
-		print("DEBUG: Cannot control AI character - it's an enemy's turn")
 		if chat_panel:
 			chat_panel.add_system_message("Cannot control enemy characters - AI is taking its turn")
 		return
 	
-	print("DEBUG: Current turn character: ", current_turn_character.character_type, " at ", current_turn_character.grid_position)
-	
 	# Check if clicking on current character (selection)
 	if grid_position == current_turn_character.grid_position:
-		print("DEBUG: Character selected")
 		current_turn_character.character_selected.emit()
 		return
 	
 	# Attempt to move character to clicked position
-	print("DEBUG: Attempting to move character to: ", grid_position)
 	var movement_successful = current_turn_character.attempt_move_to(grid_position)
 	
 	if movement_successful:
 		if chat_panel:
 			var player_name = _get_player_name_for_character(current_turn_character)
 			chat_panel.add_combat_message("%s (%s) moved to %s" % [player_name, current_turn_character.character_type, str(grid_position)])
-		print("DEBUG: Movement successful")
 	else:
-		print("DEBUG: Movement failed")
 		if chat_panel:
 			chat_panel.add_system_message("Cannot move to that position")
 
@@ -813,7 +694,7 @@ func _on_movement_completed(new_position: Vector2i) -> void:
 			if chat_panel:
 				chat_panel.add_system_message("Movement range updated from new position: " + str(new_position))
 
-func _on_turn_started(character: BaseCharacter) -> void:
+func _on_turn_started(_character: BaseCharacter) -> void:
 	"""Handle when a turn starts - update turn order UI and display current character stats"""
 	_update_turn_order_ui()
 	
@@ -847,21 +728,18 @@ func _on_turn_started(character: BaseCharacter) -> void:
 		if grid_manager:
 			grid_manager.clear_movement_highlights()
 
-func _on_turn_ended(character: BaseCharacter) -> void:
+func _on_turn_ended(_character: BaseCharacter) -> void:
 	"""Handle when a turn ends"""
 	pass  # Turn order UI will be updated when next turn starts
 
 func _update_turn_order_ui() -> void:
 	"""Update the turn order UI to show all characters in initiative order"""
-	print("=== UPDATING TURN ORDER UI ===")
 	if not turn_manager or not turn_order_panel:
-		print("ERROR: Missing turn_manager or turn_order_panel")
 		return
 	
 	# Safety check: ensure we have characters before updating UI
 	var characters_in_order = turn_manager.get_characters_in_turn_order()
 	if characters_in_order.size() == 0:
-		print("WARNING: No characters available for turn order UI, deferring update")
 		# Defer the update to next frame to allow character initialization to complete
 		call_deferred("_update_turn_order_ui")
 		return
@@ -876,53 +754,39 @@ func _update_turn_order_ui() -> void:
 	var current_character = turn_manager.get_current_character()
 	var current_character_index = turn_manager.current_character_index
 	
-	print("Characters in turn order: ", characters_in_order.size())
 	for i in range(characters_in_order.size()):
 		var character = characters_in_order[i]
 		if character and is_instance_valid(character):
-			print("Character ", i, ": ", character.character_type, " (Authority: ", character.get_multiplayer_authority(), ")")
+			pass
 		else:
-			print("WARNING: Invalid character at index ", i)
 			return  # Exit if we have invalid characters
-	
-	print("Current character index: ", current_character_index)
 	
 	# Update the main current entity display
 	if current_character and is_instance_valid(current_character):
-		print("Updating current entity display for: ", current_character.character_type)
 		_update_current_entity_display(current_character)
-	else:
-		print("WARNING: Invalid current character, skipping entity display update")
 	
 	# Create displays for all characters in turn order
 	for i in range(characters_in_order.size()):
 		var character = characters_in_order[i]
 		if not character or not is_instance_valid(character):
-			print("WARNING: Skipping invalid character at index ", i)
 			continue
 			
 		var is_current = (i == current_character_index and turn_manager.is_turn_active)
 		
-		print("Processing character ", i, ": ", character.character_type, " (is_current: ", is_current, ")")
-		
 		# Skip the current character as it's already shown in the CurrentEntity panel
 		if is_current:
-			print("Skipping current character")
 			continue
 			
-		print("Creating display for: ", character.character_type)
 		var character_display = _create_character_turn_display(character, i, current_character_index)
 		turn_order_panel.add_child(character_display)
 		turn_order_displays.append(character_display)
-	
-	print("Turn order UI update complete. Dynamic displays created: ", turn_order_displays.size())
 
 func _get_player_name_for_character(character: BaseCharacter) -> String:
 	"""Get a display name for the character's player"""
 	var authority = character.get_multiplayer_authority()
 	
 	# Check NetworkManager for player name
-	if NetworkManager and NetworkManager.is_connected:
+	if NetworkManager and NetworkManager.connected:
 		var players = NetworkManager.get_players_list()
 		for player_info in players:
 			if player_info.peer_id == authority:
@@ -1057,37 +921,13 @@ func _input(event: InputEvent) -> void:
 
 func _debug_print_game_state() -> void:
 	"""Debug function to print current game state"""
-	print("\n=== MULTIPLAYER GAME STATE DEBUG ===")
-	var current_character = get_current_player_character()
-	if current_character:
-		print("Current character: ", current_character.character_type)
-		print("Current character stats: ", current_character.get_stats_summary())
-		print("Current character grid position: ", current_character.grid_position)
-		print("Current character world position: ", current_character.global_position)
-	
-	print("Total characters: ", player_characters.size())
-	for peer_id in player_characters:
-		var character = player_characters[peer_id]
-		print("Peer ", peer_id, ": ", character.character_type, " at ", character.grid_position)
-	
-	print("Total enemies: ", enemy_characters.size())
-	for enemy in enemy_characters:
-		print("Enemy: ", enemy.character_type, " at ", enemy.grid_position, " - ", enemy.get_stats_summary())
-	
-	if turn_manager:
-		turn_manager.debug_print_turn_state()
-	
-	if grid_manager and current_character:
-		grid_manager.debug_print_tile_info(current_character.grid_position)
-	
-	print("=============================\n")
+	pass
 
 func _debug_test_movement() -> void:
 	"""Debug function to test movement"""
 	var current_character = get_current_player_character()
 	if current_character:
 		var test_position: Vector2i = Vector2i(current_character.grid_position.x + 1, current_character.grid_position.y)
-		print("Testing movement to: ", test_position)
 		current_character.attempt_move_to(test_position)
 
 func _debug_test_damage() -> void:
@@ -1095,43 +935,18 @@ func _debug_test_damage() -> void:
 	var current_character = get_current_player_character()
 	if current_character:
 		current_character.take_damage(10)
-		print("Applied 10 damage to current character")
 
 func _debug_test_enemy_ai() -> void:
 	"""Debug function to test enemy AI"""
-	print("\n=== ENEMY AI DEBUG TEST ===")
-	
 	if enemy_characters.size() == 0:
-		print("No enemies to test")
 		return
 	
-	for i in range(enemy_characters.size()):
-		var enemy = enemy_characters[i]
-		if not enemy or not is_instance_valid(enemy):
-			print("Enemy ", i, ": INVALID")
-			continue
-		
-		print("Enemy ", i, ": ", enemy.character_type)
-		print("  - Authority: ", enemy.get_multiplayer_authority())
-		print("  - Grid Position: ", enemy.grid_position)
-		print("  - Stats: ", enemy.get_stats_summary())
-		print("  - Is AI Controlled: ", enemy.has_method("is_ai_controlled") and enemy.is_ai_controlled())
-		print("  - Has AI Methods: start_ai_turn=", enemy.has_method("start_ai_turn"), " handle_turn_start=", enemy.has_method("handle_turn_start"))
-		
-		# Test AI turn if it's the current character
-		if turn_manager and turn_manager.get_current_character() == enemy:
-			print("  - This enemy is the current character in turn order")
-			print("  - Turn Manager thinks is_local_player_turn: ", turn_manager.is_local_player_turn())
-			print("  - Turn active: ", turn_manager.is_character_turn_active())
-		
-		# Force test AI logic for first enemy
-		if i == 0 and enemy.has_method("start_ai_turn"):
-			print("  - Force testing AI logic...")
-			enemy.start_ai_turn()
-			if chat_panel:
-				chat_panel.add_system_message("DEBUG: Forced AI turn for " + enemy.character_type)
-	
-	print("=== ENEMY AI DEBUG TEST COMPLETE ===\n")
+	# Force test AI logic for first enemy
+	var enemy = enemy_characters[0]
+	if enemy and enemy.has_method("start_ai_turn"):
+		enemy.start_ai_turn()
+		if chat_panel:
+			chat_panel.add_system_message("DEBUG: Forced AI turn for " + enemy.character_type)
 
 func _toggle_grid_borders() -> void:
 	"""Debug function to toggle grid border visibility"""
@@ -1147,7 +962,6 @@ func _on_give_up_pressed() -> void:
 
 func _on_give_up_confirmed() -> void:
 	"""Handle Give up confirmation - return to main menu"""
-	print("Player confirmed give up - returning to main menu")
 	
 	# Add a system message before leaving
 	if chat_panel:
@@ -1166,13 +980,12 @@ func _on_give_up_canceled() -> void:
 
 func _cleanup_before_scene_change() -> void:
 	"""Perform cleanup before changing scenes"""
-	print("=== CLEANUP BEFORE SCENE CHANGE ===")
 	
 	# Reset spawning flag
 	is_spawning_characters = false
 	
 	# Disconnect from multiplayer if connected
-	if NetworkManager and NetworkManager.is_connected:
+	if NetworkManager and NetworkManager.connected:
 		NetworkManager.disconnect_from_network()
 	
 	# Clear game state
@@ -1184,8 +997,6 @@ func _cleanup_before_scene_change() -> void:
 	
 	# Wait a frame to ensure cleanup is processed
 	await get_tree().process_frame
-	
-	print("=== CLEANUP COMPLETE ===")
 
 func get_grid_manager() -> GridManager:
 	"""Get reference to the grid manager"""
