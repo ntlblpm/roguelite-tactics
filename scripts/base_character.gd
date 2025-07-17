@@ -324,6 +324,10 @@ func _refresh_resources() -> void:
 	current_ability_points = max_ability_points
 	_emit_stat_updates()
 
+func is_ai_controlled() -> bool:
+	"""Check if this character is AI controlled - override in enemy classes"""
+	return false
+
 func set_grid_position(new_position: Vector2i) -> void:
 	"""Set the character's grid position (for initial placement)"""
 	grid_position = new_position

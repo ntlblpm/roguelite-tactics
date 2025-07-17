@@ -62,18 +62,39 @@ func _play_attack_animation() -> void:
 	var direction_to_target = GameConstants.determine_movement_direction(grid_position, current_target.grid_position)
 	current_facing_direction = direction_to_target
 	
-	# Play Attack1 animation with direction
-	var animation_name = "Attack1" + GameConstants.get_direction_suffix(direction_to_target)
-	animated_sprite.play(animation_name)
+	# Use the base class animation method to ensure proper validation and state management
+	_play_animation("Attack1", direction_to_target)
 
 func _wait_for_attack_animation() -> void:
-	"""Wait for the attack animation to finish"""
+	"""Wait for the attack animation to finish with timeout to prevent hanging"""
 	if not animated_sprite:
 		return
 	
-	# Wait for animation to complete
+	# Wait for animation to complete with timeout to prevent hanging
 	if animated_sprite.is_playing():
-		await animated_sprite.animation_finished
+		# Use a race condition approach with a timer
+		var timer = get_tree().create_timer(2.0)  # 2-second timeout
+		var animation_finished: bool = false
+		
+		# Connect to animation finished signal temporarily
+		var animation_connection = func(): animation_finished = true
+		animated_sprite.animation_finished.connect(animation_connection, CONNECT_ONE_SHOT)
+		
+		# Wait for either animation to finish or timeout
+		while animated_sprite.is_playing() and not timer.time_left <= 0:
+			await get_tree().process_frame
+			if animation_finished:
+				break
+		
+		# Clean up connection if it still exists
+		if animated_sprite.animation_finished.is_connected(animation_connection):
+			animated_sprite.animation_finished.disconnect(animation_connection)
+		
+		# If animation is still playing after timeout, force it to stop
+		if animated_sprite.is_playing():
+			print("Warning: Skeleton animation timed out, forcing completion")
+			# Return to idle animation to ensure proper state
+			_play_animation(GameConstants.IDLE_ANIMATION_PREFIX)
 
 func _deal_damage_to_target(target: BaseCharacter) -> void:
 	"""Deal damage to the target character"""

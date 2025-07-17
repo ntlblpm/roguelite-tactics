@@ -599,7 +599,7 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 		current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Double-check that this is not an AI character
-			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+			if current_turn_character.is_ai_controlled():
 				return  # Don't update movement highlights for AI characters
 			
 			grid_manager.highlight_movement_range(current_turn_character.grid_position, current, current_turn_character)
@@ -608,7 +608,7 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 		grid_manager.clear_movement_highlights()
 		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
 			current_turn_character = turn_manager.get_current_character()
-			if current_turn_character and not (current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled()):
+			if current_turn_character and not current_turn_character.is_ai_controlled():
 				chat_panel.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_ability_points_changed(current: int, maximum: int) -> void:
@@ -630,7 +630,7 @@ func _on_character_selected() -> void:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Double-check that this is not an AI character
-			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+			if current_turn_character.is_ai_controlled():
 				return  # Don't show movement highlights for AI characters
 			
 			# Show movement range when selected
@@ -658,7 +658,7 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 		return
 	
 	# IMPORTANT: Block input if the current character is AI-controlled (enemy)
-	if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+	if current_turn_character.is_ai_controlled():
 		if chat_panel:
 			chat_panel.add_system_message("Cannot control enemy characters - AI is taking its turn")
 		return
@@ -686,7 +686,7 @@ func _on_movement_completed(new_position: Vector2i) -> void:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Double-check that this is not an AI character
-			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+			if current_turn_character.is_ai_controlled():
 				return  # Don't update movement highlights for AI characters
 			
 			# Immediately update movement range from the new position
@@ -703,7 +703,7 @@ func _on_turn_started(_character: BaseCharacter) -> void:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
 			# Check if the current character is AI-controlled (enemy)
-			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+			if current_turn_character.is_ai_controlled():
 				# It's an enemy turn - clear movement highlights and don't update player UI
 				if grid_manager:
 					grid_manager.clear_movement_highlights()

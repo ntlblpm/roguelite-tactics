@@ -188,34 +188,14 @@ func _find_best_move_position() -> Vector2i:
 	return best_position
 
 func _get_valid_move_positions() -> Array[Vector2i]:
-	"""Get all valid positions within movement range"""
+	"""Get all valid positions within movement range using actual pathfinding"""
 	var valid_positions: Array[Vector2i] = []
 	
 	if not grid_manager:
 		return valid_positions
 	
-	var current_pos = grid_position
-	var move_range = current_movement_points
-	
-	# Check all positions within Manhattan distance of movement range
-	for x in range(current_pos.x - move_range, current_pos.x + move_range + 1):
-		for y in range(current_pos.y - move_range, current_pos.y + move_range + 1):
-			var test_pos = Vector2i(x, y)
-			
-			# Skip current position
-			if test_pos == current_pos:
-				continue
-			
-			# Check if within movement range
-			var distance = _calculate_grid_distance(current_pos, test_pos)
-			if distance > move_range:
-				continue
-			
-			# Check if position is valid and unoccupied
-			if grid_manager.is_position_valid(test_pos) and not grid_manager.is_position_occupied_by_character(test_pos):
-				valid_positions.append(test_pos)
-	
-	return valid_positions
+	# Use grid manager's pathfinding to get all reachable positions
+	return grid_manager.get_valid_movement_positions(grid_position, current_movement_points, self)
 
 func _is_adjacent_to_target(from_pos: Vector2i, target_pos: Vector2i) -> bool:
 	"""Check if a position is adjacent to the target"""
@@ -240,9 +220,9 @@ func _perform_movement(target_position: Vector2i) -> void:
 	if success:
 		ai_action_performed.emit("movement")
 		
-		# Wait for movement animation to complete
-		if is_moving:
-			await movement_completed
+		# Wait for movement animation to complete before continuing
+		while is_moving:
+			await get_tree().process_frame
 
 ## Combat Logic (Override in subclasses)
 
@@ -282,9 +262,7 @@ func is_ai_controlled() -> bool:
 	"""Check if this character is AI controlled"""
 	return true
 
-func handle_turn_start() -> void:
-	"""Handle when it's this enemy's turn"""
-	start_ai_turn()
+
 
 ## Death Handling Override
 

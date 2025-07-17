@@ -110,7 +110,7 @@ func _start_turn() -> void:
 	combat_phase_changed.emit("player_turn")
 	
 	# Check if this is an AI-controlled enemy and start their AI logic
-	if current_character.has_method("is_ai_controlled") and current_character.is_ai_controlled():
+	if current_character.is_ai_controlled():
 		combat_phase_changed.emit("enemy_turn")
 		# Start AI logic on the next frame to ensure proper setup
 		call_deferred("_start_enemy_ai_turn")
@@ -123,13 +123,11 @@ func _start_enemy_ai_turn() -> void:
 	if not current_character or not is_turn_active:
 		return
 	
-	if not (current_character.has_method("is_ai_controlled") and current_character.is_ai_controlled()):
+	if not current_character.is_ai_controlled():
 		return
 	
 	# Call the enemy's AI turn start method
-	if current_character.has_method("handle_turn_start"):
-		current_character.handle_turn_start()
-	elif current_character.has_method("start_ai_turn"):
+	if current_character.has_method("start_ai_turn"):
 		current_character.start_ai_turn()
 	else:
 		# Force end turn to prevent getting stuck
@@ -207,6 +205,8 @@ func _end_current_turn() -> void:
 	if chat_panel:
 		var player_name = _get_player_name_for_character(current_character)
 		chat_panel.add_combat_message("%s (%s) ends their turn - Resources refreshed!" % [player_name, current_character.character_type])
+		# Debug: Log that this was a button-based turn end
+		chat_panel.add_system_message("Debug: Player turn ended via button")
 	
 	# End the character's turn (this will refresh their resources)
 	current_character.end_turn()
@@ -219,7 +219,37 @@ func _end_current_turn() -> void:
 func _on_character_turn_ended() -> void:
 	"""Handle when a character signals their turn has ended"""
 	# This is called after the character has refreshed their resources
-	pass
+	# For AI characters, we need to advance to next turn without calling end_turn() again
+	if NetworkManager and NetworkManager.is_host:
+		_advance_to_next_turn.rpc()
+
+@rpc("any_peer", "call_local", "reliable")
+func _advance_to_next_turn() -> void:
+	"""Advance to next turn without calling end_turn() again (for signal-based turn ending)"""
+	if not is_turn_active or not current_character:
+		return
+	
+	# Only host should advance turns to maintain synchronization
+	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+		return
+	
+	is_turn_active = false
+	
+	# Log turn end (character already called end_turn() so resources are refreshed)
+	if chat_panel:
+		var player_name = _get_player_name_for_character(current_character)
+		chat_panel.add_combat_message("%s (%s) ends their turn - Resources refreshed!" % [player_name, current_character.character_type])
+		# Debug: Log that this was a signal-based turn end
+		if current_character.is_ai_controlled():
+			chat_panel.add_system_message("Debug: AI turn ended via signal")
+	
+	# NOTE: Don't call current_character.end_turn() here - it was already called by the character
+	# that emitted the signal, which is what triggered this method
+	
+	turn_ended.emit(current_character)
+	
+	# Prepare for next turn
+	_prepare_next_turn()
 
 @rpc("any_peer", "call_local", "reliable")
 func _prepare_next_turn() -> void:
@@ -260,7 +290,7 @@ func is_local_player_turn() -> bool:
 		return false
 	
 	# First check if this is an AI-controlled character (enemy)
-	if current_character.has_method("is_ai_controlled") and current_character.is_ai_controlled():
+	if current_character.is_ai_controlled():
 		# AI characters are never controlled by local players, even if they have the same authority
 		return false
 	
