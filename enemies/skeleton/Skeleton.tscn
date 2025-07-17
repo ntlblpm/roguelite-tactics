@@ -10634,6 +10634,7 @@ occluder = SubResource("OccluderPolygon2D_2r8cv")
 script = ExtResource("27_8diby")
 ability_name = "Attack1"
 description = "Basic melee attack"
+take_damage_delay = 0.2
 metadata/_custom_type_script = "uid://bh56fgehx2jk"
 
 [node name="AIController" type="Node" parent="."]

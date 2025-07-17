@@ -185,19 +185,33 @@ func use_ability(target_position: Vector2i) -> bool:
 	return true
 
 func _execute_ability_sequence(target_position: Vector2i, targets: Array[BaseCharacter]) -> void:
-	"""Execute the full ability sequence: animation -> delay -> damage"""
-	# Play animation
-	await _play_ability_animation(target_position)
+	"""Execute the full ability sequence: animation + damage timing in parallel"""
+	# Start animation immediately (non-blocking)
+	_start_ability_animation(target_position)
 	
-	# Wait for damage delay
+	# Wait for damage timing
 	if take_damage_delay > 0:
 		await owner_character.get_tree().create_timer(take_damage_delay).timeout
 	
-	# Deal damage
+	# Deal damage and trigger TakeDamage animations simultaneously
 	_deal_damage_to_targets(targets)
 	
 	# Play sound effect
 	_play_sound_effect()
+
+func _start_ability_animation(target_position: Vector2i) -> void:
+	"""Start the ability animation facing the target (non-blocking)"""
+	if not owner_character.animated_sprite or animation.is_empty():
+		return
+	
+	ability_animation_started.emit()
+	
+	# Determine direction to face target
+	var direction_to_target = GameConstants.determine_movement_direction(owner_character.grid_position, target_position)
+	owner_character.current_facing_direction = direction_to_target
+	
+	# Play animation with direction synchronized across all clients
+	owner_character._play_animation_synchronized.rpc(animation, direction_to_target)
 
 func _play_ability_animation(target_position: Vector2i) -> void:
 	"""Play the ability animation facing the target"""
@@ -210,11 +224,8 @@ func _play_ability_animation(target_position: Vector2i) -> void:
 	var direction_to_target = GameConstants.determine_movement_direction(owner_character.grid_position, target_position)
 	owner_character.current_facing_direction = direction_to_target
 	
-	# Play animation with direction
-	if owner_character.has_method("_play_animation_synchronized"):
-		owner_character._play_animation_synchronized.rpc(animation, direction_to_target)
-	else:
-		owner_character._play_animation(animation + GameConstants.get_direction_suffix(direction_to_target))
+	# Play animation with direction synchronized across all clients
+	owner_character._play_animation_synchronized.rpc(animation, direction_to_target)
 	
 	# Wait for animation to complete
 	await _wait_for_animation_completion()

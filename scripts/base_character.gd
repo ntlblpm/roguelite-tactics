@@ -266,7 +266,7 @@ func _play_animation(base_name: String, direction: GameConstants.Direction = cur
 	if animated_sprite.sprite_frames.has_animation(animation_name):
 		animated_sprite.play(animation_name)
 
-@rpc("any_peer", "call_local", "reliable")
+@rpc("call_local", "any_peer", "reliable")
 func _play_animation_synchronized(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
 	"""Play an animation synchronized across all clients via RPC"""
 	# Update facing direction for all clients
@@ -514,11 +514,8 @@ func take_damage(damage: int) -> void:
 	"""Apply damage to the character"""
 	current_health_points = max(0, current_health_points - damage)
 	
-	# Synchronize HP across all clients
-	_sync_health_points.rpc(current_health_points)
-	
-	# Play damage animation
-	_play_animation(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
+	# Synchronize HP and TakeDamage animation simultaneously across all clients
+	_sync_damage_taken.rpc(current_health_points, damage)
 	
 	if current_health_points <= 0:
 		_handle_death()
@@ -529,6 +526,18 @@ func heal(amount: int) -> void:
 	
 	# Synchronize HP across all clients
 	_sync_health_points.rpc(current_health_points)
+
+@rpc("any_peer", "call_local", "reliable")
+func _sync_damage_taken(new_hp: int, damage_amount: int) -> void:
+	"""Synchronize damage taken: HP update + TakeDamage animation simultaneously"""
+	current_health_points = new_hp
+	
+	# Play TakeDamage animation immediately on all clients
+	_play_animation(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
+	
+	# Only emit UI signals on the character owner's client
+	if get_multiplayer_authority() == multiplayer.get_unique_id():
+		health_changed.emit(current_health_points, max_health_points)
 
 @rpc("any_peer", "call_local", "reliable")
 func _sync_health_points(new_hp: int) -> void:
