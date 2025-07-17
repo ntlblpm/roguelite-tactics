@@ -46,10 +46,23 @@ var grid_manager: Node = null
 # Character type name for logging (override in subclasses)
 var character_type: String = "Character"
 
+# Material management for outline shader
+var default_material: ShaderMaterial = null
+var current_turn_material: ShaderMaterial = null
+var is_current_turn: bool = false
+
+# Material resource paths
+const PLAYER_OUTLINE_MATERIAL_PATH: String = "res://resources/materials/player_outline_material.tres"
+const ENEMY_OUTLINE_MATERIAL_PATH: String = "res://resources/materials/enemy_outline_material.tres"
+const CURRENT_PLAYER_OUTLINE_MATERIAL_PATH: String = "res://resources/materials/current_player_outline_material.tres"
+const CURRENT_ENEMY_OUTLINE_MATERIAL_PATH: String = "res://resources/materials/current_enemy_outline_material.tres"
+
 func _ready() -> void:
 	_initialize_stats()
 	_setup_movement_tween()
 	_setup_animation_signals()
+	_initialize_materials()
+	_connect_turn_signals()
 	
 	# Start with idle animation
 	if animated_sprite:
@@ -67,6 +80,9 @@ func _exit_tree() -> void:
 	if animated_sprite and animated_sprite.animation_finished.is_connected(_on_animation_finished):
 		animated_sprite.animation_finished.disconnect(_on_animation_finished)
 	
+	# Disconnect turn manager signals
+	_disconnect_turn_signals()
+	
 	# Unregister from grid manager
 	if grid_manager:
 		grid_manager.unregister_character(self)
@@ -74,10 +90,13 @@ func _exit_tree() -> void:
 	# Clear references
 	grid_manager = null
 	current_path.clear()
+	default_material = null
+	current_turn_material = null
 	
 	# Reset state to clean values
 	is_moving = false
 	is_dead = false
+	is_current_turn = false
 
 func _initialize_stats() -> void:
 	"""Initialize character stats to maximum values"""
@@ -98,6 +117,139 @@ func _setup_animation_signals() -> void:
 	"""Connect animation finished signal"""
 	if animated_sprite:
 		animated_sprite.animation_finished.connect(_on_animation_finished)
+
+func _initialize_materials() -> void:
+	"""Initialize outline materials based on character type"""
+	if not animated_sprite:
+		return
+	
+	# Load appropriate materials based on character type
+	if is_ai_controlled():
+		# Enemy materials
+		default_material = load(ENEMY_OUTLINE_MATERIAL_PATH) as ShaderMaterial
+		current_turn_material = load(CURRENT_ENEMY_OUTLINE_MATERIAL_PATH) as ShaderMaterial
+	else:
+		# Player materials
+		default_material = load(PLAYER_OUTLINE_MATERIAL_PATH) as ShaderMaterial
+		current_turn_material = load(CURRENT_PLAYER_OUTLINE_MATERIAL_PATH) as ShaderMaterial
+	
+	# Apply default material
+	_apply_default_material()
+
+func _connect_turn_signals() -> void:
+	"""Connect to turn manager signals for material switching"""
+	# Find the turn manager in the scene tree
+	var turn_manager: TurnManager = get_tree().get_first_node_in_group("turn_manager")
+	if not turn_manager:
+		# Try to find it by type in the scene
+		turn_manager = _find_turn_manager_in_scene()
+	
+	if turn_manager:
+		# Connect to turn signals
+		if not turn_manager.turn_started.is_connected(_on_turn_started):
+			turn_manager.turn_started.connect(_on_turn_started)
+		if not turn_manager.turn_ended.is_connected(_on_turn_ended):
+			turn_manager.turn_ended.connect(_on_turn_ended)
+
+func _find_turn_manager_in_scene() -> TurnManager:
+	"""Find TurnManager in the scene tree"""
+	var root = get_tree().get_root()
+	return _recursive_find_turn_manager(root)
+
+func _recursive_find_turn_manager(node: Node) -> TurnManager:
+	"""Recursively search for TurnManager in node tree"""
+	if node is TurnManager:
+		return node as TurnManager
+	
+	for child in node.get_children():
+		var result = _recursive_find_turn_manager(child)
+		if result:
+			return result
+	
+	return null
+
+func _on_turn_started(character: BaseCharacter) -> void:
+	"""Handle when a turn starts"""
+	if character == self:
+		is_current_turn = true
+		_apply_current_turn_material()
+		_debug_print_material_change("CURRENT TURN")
+	else:
+		is_current_turn = false
+		_apply_default_material()
+		_debug_print_material_change("DEFAULT")
+
+func _on_turn_ended(character: BaseCharacter) -> void:
+	"""Handle when a turn ends"""
+	if character == self:
+		is_current_turn = false
+		_apply_default_material()
+		_debug_print_material_change("DEFAULT (turn ended)")
+
+func _apply_default_material() -> void:
+	"""Apply the default outline material"""
+	if animated_sprite and default_material:
+		animated_sprite.material = default_material
+
+func _apply_current_turn_material() -> void:
+	"""Apply the current turn outline material"""
+	if animated_sprite and current_turn_material:
+		animated_sprite.material = current_turn_material
+
+func _debug_print_material_change(reason: String) -> void:
+	"""Debug print for material changes (can be disabled for production)"""
+	if OS.is_debug_build():
+		var material_name = "NONE"
+		if animated_sprite and animated_sprite.material:
+			material_name = animated_sprite.material.resource_path.get_file()
+		print("%s (%s): Material set to %s - Reason: %s" % [character_type, name, material_name, reason])
+
+func set_material_override(material: ShaderMaterial) -> void:
+	"""Manually set a material override (useful for special effects)"""
+	if animated_sprite:
+		animated_sprite.material = material
+
+func get_current_material() -> ShaderMaterial:
+	"""Get the currently applied material"""
+	if animated_sprite:
+		return animated_sprite.material as ShaderMaterial
+	return null
+
+func refresh_materials() -> void:
+	"""Force refresh materials - useful for debugging or after material changes"""
+	_initialize_materials()
+	
+	# Apply appropriate material based on current turn state
+	if is_current_turn:
+		_apply_current_turn_material()
+	else:
+		_apply_default_material()
+	
+	_debug_print_material_change("REFRESH")
+
+func get_material_status() -> Dictionary:
+	"""Get current material status for debugging"""
+	return {
+		"is_current_turn": is_current_turn,
+		"has_default_material": default_material != null,
+		"has_current_turn_material": current_turn_material != null,
+		"active_material_path": animated_sprite.material.resource_path if animated_sprite and animated_sprite.material else "NONE",
+		"character_type": character_type,
+		"is_ai_controlled": is_ai_controlled()
+	}
+
+func _disconnect_turn_signals() -> void:
+	"""Disconnect from turn manager signals during cleanup"""
+	var turn_manager: TurnManager = get_tree().get_first_node_in_group("turn_manager")
+	if not turn_manager:
+		turn_manager = _find_turn_manager_in_scene()
+	
+	if turn_manager:
+		# Disconnect turn signals
+		if turn_manager.turn_started.is_connected(_on_turn_started):
+			turn_manager.turn_started.disconnect(_on_turn_started)
+		if turn_manager.turn_ended.is_connected(_on_turn_ended):
+			turn_manager.turn_ended.disconnect(_on_turn_ended)
 
 func _emit_stat_updates() -> void:
 	"""Emit all stat update signals for UI"""
@@ -322,7 +474,19 @@ func _refresh_resources() -> void:
 	"""Refresh MP and AP to maximum values"""
 	current_movement_points = max_movement_points
 	current_ability_points = max_ability_points
-	_emit_stat_updates()
+	
+	# Synchronize resource refresh across all clients
+	_sync_movement_points.rpc(current_movement_points)
+	_sync_ability_points.rpc(current_ability_points)
+
+@rpc("any_peer", "call_local", "reliable")
+func _sync_ability_points(new_ap: int) -> void:
+	"""Synchronize ability points across all clients"""
+	current_ability_points = new_ap
+	
+	# Only emit UI signals on the character owner's client
+	if get_multiplayer_authority() == multiplayer.get_unique_id():
+		ability_points_changed.emit(current_ability_points, max_ability_points)
 
 func is_ai_controlled() -> bool:
 	"""Check if this character is AI controlled - override in enemy classes"""
@@ -340,7 +504,9 @@ func set_grid_position(new_position: Vector2i) -> void:
 func take_damage(damage: int) -> void:
 	"""Apply damage to the character"""
 	current_health_points = max(0, current_health_points - damage)
-	health_changed.emit(current_health_points, max_health_points)
+	
+	# Synchronize HP across all clients
+	_sync_health_points.rpc(current_health_points)
 	
 	# Play damage animation
 	_play_animation(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
@@ -351,7 +517,18 @@ func take_damage(damage: int) -> void:
 func heal(amount: int) -> void:
 	"""Heal the character"""
 	current_health_points = min(max_health_points, current_health_points + amount)
-	health_changed.emit(current_health_points, max_health_points)
+	
+	# Synchronize HP across all clients
+	_sync_health_points.rpc(current_health_points)
+
+@rpc("any_peer", "call_local", "reliable")
+func _sync_health_points(new_hp: int) -> void:
+	"""Synchronize health points across all clients"""
+	current_health_points = new_hp
+	
+	# Only emit UI signals on the character owner's client
+	if get_multiplayer_authority() == multiplayer.get_unique_id():
+		health_changed.emit(current_health_points, max_health_points)
 
 func _handle_death() -> void:
 	"""Handle character death - override in subclasses for custom death messages"""
@@ -388,7 +565,8 @@ func get_character_state() -> Dictionary:
 		"current_initiative": current_initiative,
 		"current_facing_direction": current_facing_direction,
 		"is_moving": is_moving,
-		"is_dead": is_dead
+		"is_dead": is_dead,
+		"is_current_turn": is_current_turn
 	}
 
 func set_character_state(state: Dictionary) -> void:
@@ -403,6 +581,13 @@ func set_character_state(state: Dictionary) -> void:
 	current_facing_direction = state.get("current_facing_direction", GameConstants.Direction.BOTTOM_RIGHT)
 	is_moving = state.get("is_moving", false)
 	is_dead = state.get("is_dead", false)
+	is_current_turn = state.get("is_current_turn", false)
+	
+	# Update material based on turn state
+	if is_current_turn:
+		_apply_current_turn_material()
+	else:
+		_apply_default_material()
 	
 	# Update world position
 	if grid_manager:

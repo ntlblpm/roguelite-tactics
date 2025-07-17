@@ -46,9 +46,9 @@ func _attempt_attack() -> void:
 	# Deal damage to target
 	_deal_damage_to_target(current_target)
 	
-	# Consume ability points
+	# Consume ability points with network synchronization
 	current_ability_points -= SKELETON_ATTACK_COST
-	ability_points_changed.emit(current_ability_points, max_ability_points)
+	_sync_ability_points.rpc(current_ability_points)
 	
 	# Emit AI action signal
 	ai_action_performed.emit("attack")

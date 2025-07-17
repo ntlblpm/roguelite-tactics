@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Communication Guidelines
+
+- Always let me know what my second best suggestion would have been
+- Do what has been asked; nothing more, nothing less
+- NEVER create files unless absolutely necessary
+- ALWAYS prefer editing existing files over creating new ones
+- NEVER proactively create documentation unless explicitly requested
+- NEVER implement more simple solution for sole purpose of passing a build
+
 # Roguelite Tactics - Multiplayer Tactical RPG
 
 ## Project Architecture

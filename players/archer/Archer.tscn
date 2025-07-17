@@ -1,8 +1,9 @@
-[gd_scene load_steps=1103 format=3 uid="uid://dhw4sx2qkwpgq"]
+[gd_scene load_steps=1104 format=3 uid="uid://dhw4sx2qkwpgq"]
 
 [ext_resource type="Texture2D" uid="uid://w8ia7k741ch7" path="res://assets/entities/archer/Attack1.png" id="1_1mvjd"]
 [ext_resource type="Script" uid="uid://b7adslhp2f43b" path="res://players/archer/archer.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://bk7m1dop2mc5c" path="res://assets/entities/archer/Attack2.png" id="2_2nvke"]
+[ext_resource type="Material" uid="uid://cvnhnuaa4n0nd" path="res://resources/materials/player_outline_material.tres" id="2_yjrmp"]
 [ext_resource type="Texture2D" uid="uid://8mh8wt0f24wn" path="res://assets/entities/archer/Attack3.png" id="3_3ovlf"]
 [ext_resource type="Texture2D" uid="uid://coys3o2bsuilc" path="res://assets/entities/archer/Attack4.png" id="4_4pwmg"]
 [ext_resource type="Texture2D" uid="uid://e4dnp0eqpvt7" path="res://assets/entities/archer/Attack5.png" id="5_5qxnh"]
@@ -7954,6 +7955,7 @@ scale = Vector2(0.5, 0.5)
 script = ExtResource("1_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+material = ExtResource("2_yjrmp")
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_1")
 animation = &"AttackRunTopRight"

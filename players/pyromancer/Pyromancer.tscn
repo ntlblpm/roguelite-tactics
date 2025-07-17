@@ -1,7 +1,8 @@
-[gd_scene load_steps=555 format=3 uid="uid://c5ihi74sr3fih"]
+[gd_scene load_steps=556 format=3 uid="uid://c5ihi74sr3fih"]
 
 [ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://resources/shadow.tres" id="1_jpnaj"]
 [ext_resource type="Script" uid="uid://b6n6ml2jg3wlv" path="res://players/pyromancer/pyromancer.gd" id="1_script"]
+[ext_resource type="Material" uid="uid://cvnhnuaa4n0nd" path="res://resources/materials/player_outline_material.tres" id="2_evg4x"]
 [ext_resource type="Texture2D" uid="uid://dh8spmgw02sf5" path="res://assets/entities/pyromancer/Idle.png" id="2_idle"]
 [ext_resource type="Texture2D" uid="uid://df83a8b4fgd6b" path="res://assets/entities/pyromancer/Walk.png" id="3_walk"]
 [ext_resource type="Texture2D" uid="uid://u2khxpyfg4l1" path="res://assets/entities/pyromancer/Attack1.png" id="4_attack1"]
@@ -3986,6 +3987,7 @@ scale = Vector2(0.5, 0.5)
 script = ExtResource("1_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+material = ExtResource("2_evg4x")
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_t8wj3")
 animation = &"RunTopRight"

@@ -1,7 +1,8 @@
-[gd_scene load_steps=1469 format=3 uid="uid://ltpbs3virnqu"]
+[gd_scene load_steps=1470 format=3 uid="uid://ltpbs3virnqu"]
 
 [ext_resource type="Texture2D" uid="uid://b0qjk1fb4ykn1" path="res://assets/entities/skeleton/Attack1.png" id="1_1mvjd"]
 [ext_resource type="Texture2D" uid="uid://ebw32j1h2b2i" path="res://assets/entities/skeleton/Attack2.png" id="2_2nvke"]
+[ext_resource type="Material" uid="uid://bchvn707y86ut" path="res://resources/materials/enemy_outline_material.tres" id="2_5etrn"]
 [ext_resource type="Texture2D" uid="uid://d4g0qfuhjgl1f" path="res://assets/entities/skeleton/Attack3.png" id="3_3ovlf"]
 [ext_resource type="Texture2D" uid="uid://cs0w7m5j2x2t6" path="res://assets/entities/skeleton/Attack4.png" id="4_4pwmg"]
 [ext_resource type="Texture2D" uid="uid://q0gux3mfxu02" path="res://assets/entities/skeleton/Attack5.png" id="5_5qxnh"]
@@ -10605,6 +10606,7 @@ scale = Vector2(0.5, 0.5)
 script = ExtResource("skeleton_enemy_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+material = ExtResource("2_5etrn")
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_1")
 animation = &"Attack2BottomRight"

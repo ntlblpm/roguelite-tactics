@@ -23,6 +23,8 @@ var end_turn_button: Button = null
 var chat_panel: ChatPanel = null
 
 func _ready() -> void:
+	# Add to group for easy discovery by characters
+	add_to_group("turn_manager")
 	pass
 
 func _exit_tree() -> void:
