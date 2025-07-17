@@ -4,5 +4,5 @@
 
 [resource]
 shader = ExtResource("1_k86ob")
-shader_parameter/outline_width = 0.2
+shader_parameter/outline_width = 0.25
 shader_parameter/outline_color = Color(0, 1, 0, 1)

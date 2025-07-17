@@ -266,6 +266,15 @@ func _play_animation(base_name: String, direction: GameConstants.Direction = cur
 	if animated_sprite.sprite_frames.has_animation(animation_name):
 		animated_sprite.play(animation_name)
 
+@rpc("any_peer", "call_local", "reliable")
+func _play_animation_synchronized(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
+	"""Play an animation synchronized across all clients via RPC"""
+	# Update facing direction for all clients
+	current_facing_direction = direction
+	
+	# Play the animation on all clients
+	_play_animation(base_name, direction)
+
 # Input handling moved to GameController to avoid conflicts
 
 func attempt_move_to(target_position: Vector2i) -> bool:

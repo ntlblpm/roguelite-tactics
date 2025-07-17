@@ -62,8 +62,8 @@ func _play_attack_animation() -> void:
 	var direction_to_target = GameConstants.determine_movement_direction(grid_position, current_target.grid_position)
 	current_facing_direction = direction_to_target
 	
-	# Use the base class animation method to ensure proper validation and state management
-	_play_animation("Attack1", direction_to_target)
+	# Use the synchronized animation method to ensure all clients see the attack
+	_play_animation_synchronized.rpc("Attack1", direction_to_target)
 
 func _wait_for_attack_animation() -> void:
 	"""Wait for the attack animation to finish with timeout to prevent hanging"""
