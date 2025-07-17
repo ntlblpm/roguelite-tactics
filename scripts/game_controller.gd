@@ -56,13 +56,9 @@ var turn_order_displays: Array[Control] = []
 # Confirmation modal for Give up
 var give_up_confirmation_dialog: AcceptDialog
 
-# Multiplayer spawner for characters
-@onready var character_spawner: MultiplayerSpawner = $CharacterSpawner
-
 func _ready() -> void:
 	_initialize_systems()
 	_setup_ui_references()
-	_setup_multiplayer()
 	
 	# Don't initialize multiplayer game immediately - defer to next frame to ensure clean state
 	call_deferred("_deferred_multiplayer_initialization")
@@ -174,21 +170,6 @@ func _setup_ui_references() -> void:
 		give_up_confirmation_dialog = combat_ui.get_node("UILayer/MainUI/GiveUpConfirmationDialog")
 		
 		print("UI references setup complete")
-
-func _setup_multiplayer() -> void:
-	"""Setup multiplayer spawner and networking"""
-	if not character_spawner:
-		character_spawner = MultiplayerSpawner.new()
-		character_spawner.name = "CharacterSpawner"
-		add_child(character_spawner)
-	
-	# Configure the spawner
-	character_spawner.spawn_path = NodePath("CombatArea")
-	character_spawner.add_spawnable_scene("res://players/swordsman/Swordsman.tscn")
-	character_spawner.add_spawnable_scene("res://players/archer/Archer.tscn") 
-	character_spawner.add_spawnable_scene("res://players/pyromancer/Pyromancer.tscn")
-	
-	print("Multiplayer spawner setup complete")
 
 func _initialize_multiplayer_game() -> void:
 	"""Initialize the multiplayer game based on NetworkManager data"""

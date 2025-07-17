@@ -52,11 +52,6 @@ func _exit_tree() -> void:
 	
 	print("=== TURN MANAGER CLEANUP COMPLETE ===")
 
-func initialize(swordsman: SwordsmanCharacter, ui_button: Button, chat: ChatPanel) -> void:
-	"""Initialize the turn manager with single character (legacy support)"""
-	var character_list: Array[BaseCharacter] = [swordsman as BaseCharacter]
-	initialize_multiplayer(character_list, ui_button, chat)
-
 func initialize_multiplayer(character_list: Array[BaseCharacter], ui_button: Button, chat: ChatPanel) -> void:
 	"""Initialize the turn manager with multiple characters"""
 	print("=== TURN MANAGER INITIALIZATION ===")
