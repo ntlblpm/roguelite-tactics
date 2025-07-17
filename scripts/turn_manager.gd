@@ -98,9 +98,29 @@ func _start_turn() -> void:
 	print("=== Turn ", turn_number, " Started ===")
 	print("Current character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
 	print("Stats: ", current_character.get_stats_summary())
+	print("Local player ID: ", multiplayer.get_unique_id())
+	print("Is local player turn: ", is_local_player_turn())
 	
 	turn_started.emit(current_character)
 	combat_phase_changed.emit("player_turn")
+	
+	# Sync turn state across all clients
+	_broadcast_turn_update.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _broadcast_turn_update() -> void:
+	"""Broadcast turn state update to all clients"""
+	print("=== BROADCASTING TURN UPDATE ===")
+	print("Turn number: ", turn_number)
+	print("Current character index: ", current_character_index)
+	print("Is turn active: ", is_turn_active)
+	
+	if current_character:
+		print("Current character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
+	
+	# The signal emission will trigger UI updates on all clients
+	if current_character:
+		turn_started.emit(current_character)
 
 func _get_player_name_for_character(character: BaseCharacter) -> String:
 	"""Get a display name for the character's player"""
@@ -181,12 +201,18 @@ func _prepare_next_turn() -> void:
 	if characters.size() == 0:
 		return
 	
+	print("=== PREPARING NEXT TURN ===")
+	print("Previous character index: ", current_character_index)
+	
 	# Move to next character
 	current_character_index = (current_character_index + 1) % characters.size()
 	
 	# If we've cycled through all characters, increment turn number
 	if current_character_index == 0:
 		turn_number += 1
+		print("New round! Turn number: ", turn_number)
+	
+	print("New character index: ", current_character_index)
 	
 	# Small delay before starting next turn for better UX
 	await get_tree().create_timer(0.5).timeout
@@ -291,3 +317,28 @@ func debug_print_turn_state() -> void:
 		print("Character stats: ", current_character.get_stats_summary())
 	print("Is local player turn: ", is_local_player_turn())
 	print("==========================") 
+
+func get_turn_state() -> Dictionary:
+	"""Get current turn state for synchronization"""
+	return {
+		"turn_number": turn_number,
+		"current_character_index": current_character_index,
+		"is_turn_active": is_turn_active,
+		"characters_count": characters.size()
+	}
+
+func sync_turn_state(turn_state: Dictionary) -> void:
+	"""Synchronize turn state from host"""
+	print("=== SYNCING TURN STATE ===")
+	print("Received turn state: ", turn_state)
+	
+	turn_number = turn_state.get("turn_number", 1)
+	current_character_index = turn_state.get("current_character_index", 0)
+	is_turn_active = turn_state.get("is_turn_active", false)
+	
+	# Update current character reference
+	if current_character_index < characters.size():
+		current_character = characters[current_character_index]
+		print("Synchronized to character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
+	else:
+		print("ERROR: Invalid character index in turn state: ", current_character_index) 

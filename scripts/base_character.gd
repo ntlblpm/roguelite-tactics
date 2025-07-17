@@ -99,6 +99,13 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 	print("DEBUG: attempt_move_to called for target: ", target_position)
 	print("DEBUG: current grid_position: ", grid_position)
 	print("DEBUG: current_movement_points: ", current_movement_points)
+	print("DEBUG: Character authority: ", get_multiplayer_authority())
+	print("DEBUG: Local player ID: ", multiplayer.get_unique_id())
+	
+	# Only allow the character owner to initiate movement
+	if get_multiplayer_authority() != multiplayer.get_unique_id():
+		print("DEBUG: Cannot move - not the character owner")
+		return false
 	
 	if not grid_manager or is_moving:
 		print("DEBUG: No grid manager or already moving")
@@ -131,9 +138,25 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 		print("Not enough movement points! Need: ", movement_cost, " Have: ", current_movement_points)
 		return false
 	
-	# Execute the movement along the path
-	_execute_path_movement(path, movement_cost)
+	# Execute the movement via RPC to synchronize across all clients
+	print("DEBUG: Executing networked movement to: ", path[-1])
+	_execute_networked_movement.rpc(path, movement_cost)
 	return true
+
+@rpc("any_peer", "call_local", "reliable")
+func _execute_networked_movement(path: Array[Vector2i], cost: int) -> void:
+	"""Execute movement across all clients (RPC method)"""
+	print("DEBUG: _execute_networked_movement called with path: ", path, " cost: ", cost)
+	print("DEBUG: RPC sender: ", multiplayer.get_remote_sender_id())
+	print("DEBUG: Character authority: ", get_multiplayer_authority())
+	
+	# Verify that the movement request is from the character owner
+	var sender_id = multiplayer.get_remote_sender_id()
+	if sender_id != get_multiplayer_authority() and sender_id != 0:  # 0 means local call
+		print("WARNING: Movement request from unauthorized peer: ", sender_id)
+		return
+	
+	_execute_path_movement(path, cost)
 
 func _calculate_path_cost(path: Array[Vector2i]) -> int:
 	"""Calculate the total movement cost of a path"""
@@ -146,19 +169,53 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	if path.size() == 0:
 		return
 	
-	# Consume movement points
-	current_movement_points -= cost
-	movement_points_changed.emit(current_movement_points, max_movement_points)
+	print("DEBUG: Executing path movement to: ", path[-1], " with cost: ", cost)
 	
-	# Update grid position to final destination immediately
+	# Consume movement points (only on the character owner's client)
+	if get_multiplayer_authority() == multiplayer.get_unique_id():
+		current_movement_points -= cost
+		print("DEBUG: MP consumed. New MP: ", current_movement_points, "/", max_movement_points)
+		
+		# Synchronize MP across all clients
+		_sync_movement_points.rpc(current_movement_points)
+		
+		# Emit signal for local UI updates
+		movement_points_changed.emit(current_movement_points, max_movement_points)
+	
+	# Update grid position to final destination on all clients
+	var old_position = grid_position
 	grid_position = path[-1]
 	target_grid_position = path[-1]
 	
-	# Emit movement completed signal immediately for instant range updates
+	print("DEBUG: Updated grid position from ", old_position, " to ", grid_position)
+	
+	# Emit movement completed signal for grid manager updates
 	movement_completed.emit(grid_position)
 	
-	# Start movement animation along the path (direction will be set dynamically)
+	# Start movement animation on all clients
 	_animate_path_movement(path)
+
+@rpc("any_peer", "call_local", "reliable")
+func _sync_movement_points(new_mp: int) -> void:
+	"""Synchronize movement points across all clients"""
+	print("DEBUG: Syncing MP to: ", new_mp)
+	current_movement_points = new_mp
+	
+	# Only emit UI signals on the character owner's client
+	if get_multiplayer_authority() == multiplayer.get_unique_id():
+		movement_points_changed.emit(current_movement_points, max_movement_points)
+
+@rpc("any_peer", "call_local", "reliable")
+func _sync_position(new_grid_position: Vector2i) -> void:
+	"""Synchronize character position across all clients"""
+	print("DEBUG: Syncing position to: ", new_grid_position)
+	grid_position = new_grid_position
+	target_grid_position = new_grid_position
+	
+	# Update world position
+	if grid_manager:
+		global_position = grid_manager.grid_to_world(grid_position)
+		print("DEBUG: Updated world position to: ", global_position)
 
 
 func _animate_path_movement(path: Array[Vector2i]) -> void:
@@ -337,6 +394,47 @@ func set_facing_direction(direction: GameConstants.Direction) -> void:
 func get_facing_direction() -> GameConstants.Direction:
 	"""Get the character's current facing direction"""
 	return current_facing_direction
+
+func get_character_state() -> Dictionary:
+	"""Get current character state for synchronization"""
+	return {
+		"grid_position": grid_position,
+		"target_grid_position": target_grid_position,
+		"current_health_points": current_health_points,
+		"current_movement_points": current_movement_points,
+		"current_action_points": current_action_points,
+		"current_initiative": current_initiative,
+		"current_facing_direction": current_facing_direction,
+		"is_moving": is_moving,
+		"is_dead": is_dead
+	}
+
+func set_character_state(state: Dictionary) -> void:
+	"""Set character state from synchronization data"""
+	print("DEBUG: Setting character state: ", state)
+	
+	grid_position = state.get("grid_position", Vector2i.ZERO)
+	target_grid_position = state.get("target_grid_position", Vector2i.ZERO)
+	current_health_points = state.get("current_health_points", max_health_points)
+	current_movement_points = state.get("current_movement_points", max_movement_points)
+	current_action_points = state.get("current_action_points", max_action_points)
+	current_initiative = state.get("current_initiative", base_initiative)
+	current_facing_direction = state.get("current_facing_direction", GameConstants.Direction.BOTTOM_RIGHT)
+	is_moving = state.get("is_moving", false)
+	is_dead = state.get("is_dead", false)
+	
+	# Update world position
+	if grid_manager:
+		global_position = grid_manager.grid_to_world(grid_position)
+	
+	# Emit stat updates only for local player
+	if get_multiplayer_authority() == multiplayer.get_unique_id():
+		_emit_stat_updates()
+
+@rpc("any_peer", "call_local", "reliable")
+func _sync_character_state(state: Dictionary) -> void:
+	"""Synchronize complete character state across all clients"""
+	set_character_state(state)
 
 func _on_animation_finished() -> void:
 	"""Handle when an animation finishes playing"""

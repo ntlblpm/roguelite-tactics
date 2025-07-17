@@ -118,6 +118,10 @@ func _initialize_multiplayer_game() -> void:
 	
 	# Get player data from NetworkManager
 	var players = NetworkManager.get_players_list()
+	print("=== INITIALIZING MULTIPLAYER GAME ===")
+	print("Local peer ID: ", multiplayer.get_unique_id())
+	print("Is host: ", NetworkManager.is_host)
+	print("Players count: ", players.size())
 	
 	if NetworkManager.is_host:
 		# Convert PlayerInfo objects to dictionaries for RPC transmission
@@ -130,19 +134,100 @@ func _initialize_multiplayer_game() -> void:
 				"class_levels": player_info.class_levels
 			})
 		
-		# Host spawns all characters
+		print("Host spawning characters for all players...")
+		# Host spawns all characters and broadcasts to all clients
 		_spawn_all_characters.rpc(players_data)
+	else:
+		# Joining player - request current game state from host
+		print("Joining player requesting game state from host...")
+		_request_game_state.rpc_id(1)
 	
 	# Wait a frame for spawning to complete, then connect systems
 	await get_tree().process_frame
 	_connect_systems()
 
+@rpc("any_peer", "call_remote", "reliable")
+func _request_game_state() -> void:
+	"""Request current game state from host (for late joiners)"""
+	if not NetworkManager.is_host:
+		return
+	
+	var sender_id = multiplayer.get_remote_sender_id()
+	print("Host received game state request from peer: ", sender_id)
+	
+	# Send current game state to the requesting player
+	var players = NetworkManager.get_players_list()
+	var players_data: Array = []
+	for player_info in players:
+		players_data.append({
+			"peer_id": player_info.peer_id,
+			"player_name": player_info.player_name,
+			"selected_class": player_info.selected_class,
+			"class_levels": player_info.class_levels
+		})
+	
+	# Get current character states for synchronization
+	var character_states: Dictionary = {}
+	for peer_id in player_characters:
+		var character = player_characters[peer_id]
+		if character and is_instance_valid(character):
+			character_states[peer_id] = character.get_character_state()
+	
+	# Get current turn state
+	var turn_state: Dictionary = {}
+	if turn_manager:
+		turn_state = turn_manager.get_turn_state()
+	
+	# Send comprehensive game state specifically to the requesting player
+	_receive_game_state.rpc_id(sender_id, players_data, character_states, turn_state)
+
+@rpc("authority", "call_local", "reliable")
+func _receive_game_state(players_data: Array, character_states: Dictionary, turn_state: Dictionary) -> void:
+	"""Receive and process game state from host (for late joiners)"""
+	print("=== RECEIVING GAME STATE AS LATE JOINER ===")
+	print("Received players data: ", players_data)
+	print("Received character states: ", character_states.keys())
+	print("Received turn state: ", turn_state)
+	
+	# Spawn all characters first
+	_spawn_all_characters_internal(players_data)
+	
+	# Wait a frame for characters to be properly spawned
+	await get_tree().process_frame
+	
+	# Apply character states
+	for peer_id in character_states:
+		if player_characters.has(peer_id):
+			var character = player_characters[peer_id]
+			if character and is_instance_valid(character):
+				character.set_character_state(character_states[peer_id])
+				print("Applied state to character for peer: ", peer_id)
+	
+	# Apply turn state
+	if turn_manager and turn_state.size() > 0:
+		turn_manager.sync_turn_state(turn_state)
+		print("Applied turn state")
+
 @rpc("authority", "call_local", "reliable")
 func _spawn_all_characters(players_data: Array) -> void:
 	"""Spawn characters for all players (called by host)"""
-	print("=== SPAWNING CHARACTERS ===")
+	print("=== SPAWNING CHARACTERS (RPC) ===")
+	print("RPC called by peer: ", multiplayer.get_remote_sender_id())
+	print("Local peer ID: ", multiplayer.get_unique_id())
+	_spawn_all_characters_internal(players_data)
+
+func _spawn_all_characters_internal(players_data: Array) -> void:
+	"""Internal method to spawn characters (shared by RPC and local calls)"""
+	print("=== SPAWNING CHARACTERS (INTERNAL) ===")
 	print("Spawning characters for ", players_data.size(), " players")
 	print("Player data received: ", players_data)
+	
+	# Clear any existing characters first
+	for peer_id in player_characters.keys():
+		var character = player_characters[peer_id]
+		if character and is_instance_valid(character):
+			character.queue_free()
+	player_characters.clear()
 	
 	for i in range(players_data.size()):
 		var player_data = players_data[i]
@@ -154,6 +239,7 @@ func _spawn_all_characters(players_data: Array) -> void:
 	
 	print("=== SPAWNING COMPLETE ===")
 	print("Total characters spawned: ", player_characters.size())
+	print("Characters by peer ID: ", player_characters.keys())
 
 func _spawn_character(peer_id: int, character_class: String, position: Vector2i) -> void:
 	"""Spawn a character for a specific player"""
@@ -206,9 +292,20 @@ func _connect_systems() -> void:
 	print("Player characters dictionary size: ", player_characters.size())
 	print("Player characters: ", player_characters.keys())
 	
+	# Wait for all characters to be properly spawned
+	if player_characters.size() == 0:
+		print("WARNING: No characters found, deferring system connection...")
+		await get_tree().process_frame
+		_connect_systems()
+		return
+	
 	var character_list: Array[BaseCharacter] = []
 	for peer_id in player_characters:
 		var character = player_characters[peer_id]
+		if not character or not is_instance_valid(character):
+			print("WARNING: Invalid character for peer ", peer_id, ", skipping...")
+			continue
+		
 		print("Processing character for peer ", peer_id, ": ", character.character_type, " at ", character.grid_position)
 		
 		# Set grid manager reference
@@ -225,10 +322,15 @@ func _connect_systems() -> void:
 			character.action_points_changed.connect(_on_action_points_changed)
 			character.character_selected.connect(_on_character_selected)
 			character.movement_completed.connect(_on_movement_completed)
+			print("Connected UI signals for local player character: ", character.character_type)
 		
 		character_list.append(character)
 	
 	print("Character list size: ", character_list.size())
+	
+	if character_list.size() == 0:
+		print("ERROR: No valid characters found for system connection!")
+		return
 	
 	# Connect grid manager tile clicks to character movement (only for local player)
 	if grid_manager:
@@ -242,9 +344,16 @@ func _connect_systems() -> void:
 		turn_manager.turn_started.connect(_on_turn_started)
 		turn_manager.turn_ended.connect(_on_turn_ended)
 		
-		# Initialize turn order UI immediately to hide dummy data
-		_hide_static_next_entity_panels()
-		_update_turn_order_ui()
+		# For non-host players, request current turn state from host
+		if not NetworkManager.is_host:
+			print("Requesting turn state synchronization from host...")
+			_request_turn_sync.rpc_id(1)
+		else:
+			# Host immediately updates UI
+			_hide_static_next_entity_panels()
+			_update_turn_order_ui()
+			# Broadcast initial turn state to all clients
+			_sync_turn_state.rpc()
 	
 	# Connect Give up button and confirmation dialog
 	if give_up_button:
@@ -261,6 +370,56 @@ func _connect_systems() -> void:
 			chat_panel.add_system_message("Grid borders enabled - Press G to toggle")
 	
 	print("All systems connected for ", player_characters.size(), " players")
+
+@rpc("any_peer", "call_remote", "reliable")
+func _request_turn_sync() -> void:
+	"""Request current turn state from host"""
+	if not NetworkManager.is_host or not turn_manager:
+		return
+	
+	var sender_id = multiplayer.get_remote_sender_id()
+	print("Host received turn sync request from peer: ", sender_id)
+	
+	# Send current turn state to the requesting player
+	_sync_turn_state.rpc_id(sender_id)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_turn_state() -> void:
+	"""Synchronize turn state across all clients"""
+	if not turn_manager:
+		return
+	
+	print("=== SYNCHRONIZING TURN STATE ===")
+	
+	# Get current turn state from turn manager
+	var turn_state = turn_manager.get_turn_state()
+	print("Turn state: ", turn_state)
+	
+	# For non-host clients, sync the turn state
+	if not NetworkManager.is_host:
+		turn_manager.sync_turn_state(turn_state)
+	
+	# Update turn order UI for all players
+	_hide_static_next_entity_panels()
+	_update_turn_order_ui()
+	
+	# Update current character display
+	var current_character = turn_manager.get_current_character()
+	if current_character:
+		_update_current_entity_display(current_character)
+		print("Current character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
+		
+		# Update stat displays if it's the local player's turn
+		if turn_manager.is_local_player_turn():
+			print("Updating stat displays for local player's turn")
+			if hp_text:
+				hp_text.text = "%d/%d" % [current_character.current_health_points, current_character.max_health_points]
+			if mp_text:
+				mp_text.text = "%d/%d" % [current_character.current_movement_points, current_character.max_movement_points]
+			if ap_text:
+				ap_text.text = "%d/%d" % [current_character.current_action_points, current_character.max_action_points]
+	else:
+		print("WARNING: No current character found during turn sync")
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Update HP display when character health changes"""
@@ -330,6 +489,11 @@ func _on_character_selected() -> void:
 
 func _on_tile_clicked(grid_position: Vector2i) -> void:
 	"""Handle when a tile is clicked"""
+	print("DEBUG: Tile clicked at: ", grid_position)
+	print("DEBUG: Turn manager exists: ", turn_manager != null)
+	print("DEBUG: Turn active: ", turn_manager.is_character_turn_active() if turn_manager else "N/A")
+	print("DEBUG: Is local player turn: ", turn_manager.is_local_player_turn() if turn_manager else "N/A")
+	
 	# Only allow input if it's the local player's turn
 	if not turn_manager or not turn_manager.is_character_turn_active() or not turn_manager.is_local_player_turn():
 		if turn_manager and turn_manager.is_character_turn_active() and not turn_manager.is_local_player_turn():
@@ -342,17 +506,30 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 	# Get the character whose turn it is (which must be ours due to the checks above)
 	var current_turn_character = turn_manager.get_current_character()
 	if not current_turn_character:
+		print("DEBUG: No current turn character found")
 		return
+	
+	print("DEBUG: Current turn character: ", current_turn_character.character_type, " at ", current_turn_character.grid_position)
 	
 	# Check if clicking on current character (selection)
 	if grid_position == current_turn_character.grid_position:
+		print("DEBUG: Character selected")
 		current_turn_character.character_selected.emit()
 		return
 	
 	# Attempt to move character to clicked position
-	if current_turn_character.attempt_move_to(grid_position):
+	print("DEBUG: Attempting to move character to: ", grid_position)
+	var movement_successful = current_turn_character.attempt_move_to(grid_position)
+	
+	if movement_successful:
 		if chat_panel:
-			chat_panel.add_combat_message(current_turn_character.character_type + " moved to " + str(grid_position))
+			var player_name = _get_player_name_for_character(current_turn_character)
+			chat_panel.add_combat_message("%s (%s) moved to %s" % [player_name, current_turn_character.character_type, str(grid_position)])
+		print("DEBUG: Movement successful")
+	else:
+		print("DEBUG: Movement failed")
+		if chat_panel:
+			chat_panel.add_system_message("Cannot move to that position")
 
 func _on_movement_completed(new_position: Vector2i) -> void:
 	"""Handle when the character's movement is completed"""
