@@ -1,0 +1,2 @@
+- can path through other players
+- multiplayer synchronization breaks until godot is restarted and works for one launch (just reloading project doesnt fix it)
