@@ -54,6 +54,30 @@ func _ready() -> void:
 	if animated_sprite:
 		_play_animation(GameConstants.IDLE_ANIMATION_PREFIX)
 
+func _exit_tree() -> void:
+	"""Cleanup when the character is being destroyed"""
+	print("=== CHARACTER CLEANUP ===")
+	print("Cleaning up character: ", character_type, " (Authority: ", get_multiplayer_authority(), ")")
+	
+	# Stop any running tweens
+	if movement_tween and movement_tween.is_valid():
+		movement_tween.kill()
+		movement_tween = null
+	
+	# Clear animation signals
+	if animated_sprite and animated_sprite.animation_finished.is_connected(_on_animation_finished):
+		animated_sprite.animation_finished.disconnect(_on_animation_finished)
+	
+	# Clear references
+	grid_manager = null
+	current_path.clear()
+	
+	# Reset state to clean values
+	is_moving = false
+	is_dead = false
+	
+	print("=== CHARACTER CLEANUP COMPLETE ===")
+
 func _initialize_stats() -> void:
 	"""Initialize character stats to maximum values"""
 	current_health_points = max_health_points

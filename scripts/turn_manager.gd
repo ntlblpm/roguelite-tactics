@@ -25,6 +25,33 @@ var chat_panel: ChatPanel = null
 func _ready() -> void:
 	pass
 
+func _exit_tree() -> void:
+	"""Cleanup when the turn manager is being destroyed"""
+	print("=== TURN MANAGER CLEANUP ===")
+	
+	# Disconnect button signals
+	if end_turn_button and end_turn_button.pressed.is_connected(_on_end_turn_pressed):
+		end_turn_button.pressed.disconnect(_on_end_turn_pressed)
+	
+	# Disconnect character signals
+	for character in characters:
+		if character and is_instance_valid(character):
+			if character.turn_ended.is_connected(_on_character_turn_ended):
+				character.turn_ended.disconnect(_on_character_turn_ended)
+	
+	# Clear references
+	characters.clear()
+	current_character = null
+	end_turn_button = null
+	chat_panel = null
+	
+	# Reset state
+	current_character_index = 0
+	turn_number = 1
+	is_turn_active = false
+	
+	print("=== TURN MANAGER CLEANUP COMPLETE ===")
+
 func initialize(swordsman: SwordsmanCharacter, ui_button: Button, chat: ChatPanel) -> void:
 	"""Initialize the turn manager with single character (legacy support)"""
 	var character_list: Array[BaseCharacter] = [swordsman as BaseCharacter]
@@ -37,6 +64,9 @@ func initialize_multiplayer(character_list: Array[BaseCharacter], ui_button: But
 	for i in range(character_list.size()):
 		var character = character_list[i]
 		print("Character ", i, ": ", character.character_type, " (Authority: ", character.get_multiplayer_authority(), ") Init: ", character.current_initiative)
+	
+	# Clean up any existing connections first
+	_cleanup_existing_connections()
 	
 	characters = character_list.duplicate()
 	end_turn_button = ui_button
@@ -69,8 +99,7 @@ func initialize_multiplayer(character_list: Array[BaseCharacter], ui_button: But
 	print("TurnManager initialized with ", characters.size(), " characters")
 	print("=== TURN MANAGER READY ===")
 	
-	# Start the first turn
-	_start_turn()
+	# DON'T start the first turn immediately - let the game controller handle synchronization first
 
 func _compare_characters_by_initiative(a: BaseCharacter, b: BaseCharacter) -> bool:
 	"""Compare function for sorting characters by initiative (higher first), with tree order as tiebreaker"""
@@ -81,10 +110,15 @@ func _compare_characters_by_initiative(a: BaseCharacter, b: BaseCharacter) -> bo
 	# In case of tie, earlier entity in the tree wins (use get_index())
 	return a.get_index() < b.get_index()
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func _start_turn() -> void:
 	"""Start a new turn for the current character"""
 	if characters.size() == 0:
+		return
+	
+	# Only host should start turns to maintain synchronization
+	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+		print("WARNING: Non-host attempted to start turn, ignoring")
 		return
 	
 	is_turn_active = true
@@ -107,13 +141,18 @@ func _start_turn() -> void:
 	# Sync turn state across all clients
 	_broadcast_turn_update.rpc()
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func _broadcast_turn_update() -> void:
 	"""Broadcast turn state update to all clients"""
 	print("=== BROADCASTING TURN UPDATE ===")
 	print("Turn number: ", turn_number)
 	print("Current character index: ", current_character_index)
 	print("Is turn active: ", is_turn_active)
+	
+	# Only host should broadcast turn updates
+	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+		print("WARNING: Non-host attempted to broadcast turn update, ignoring")
+		return
 	
 	if current_character:
 		print("Current character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
@@ -166,10 +205,15 @@ func _request_end_turn() -> void:
 	if current_character and current_character.get_multiplayer_authority() == sender_id:
 		_end_current_turn.rpc()
 
-@rpc("authority", "call_local", "reliable") 
+@rpc("any_peer", "call_local", "reliable") 
 func _end_current_turn() -> void:
 	"""End the current character's turn"""
 	if not is_turn_active or not current_character:
+		return
+	
+	# Only host should end turns to maintain synchronization
+	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+		print("WARNING: Non-host attempted to end turn, ignoring")
 		return
 	
 	is_turn_active = false
@@ -195,10 +239,15 @@ func _on_character_turn_ended() -> void:
 	# This is called after the character has refreshed their resources
 	print("Character turn ended signal received")
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func _prepare_next_turn() -> void:
 	"""Prepare for the next turn"""
 	if characters.size() == 0:
+		return
+	
+	# Only host should prepare next turn
+	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+		print("WARNING: Non-host attempted to prepare next turn, ignoring")
 		return
 	
 	print("=== PREPARING NEXT TURN ===")
@@ -340,5 +389,35 @@ func sync_turn_state(turn_state: Dictionary) -> void:
 	if current_character_index < characters.size():
 		current_character = characters[current_character_index]
 		print("Synchronized to character: ", current_character.character_type, " (Authority: ", current_character.get_multiplayer_authority(), ")")
+		
+		# Emit turn_started signal to trigger UI updates on clients
+		if is_turn_active and current_character:
+			print("Emitting turn_started signal for synchronized character")
+			turn_started.emit(current_character)
 	else:
-		print("ERROR: Invalid character index in turn state: ", current_character_index) 
+		print("ERROR: Invalid character index in turn state: ", current_character_index)
+
+func start_first_turn() -> void:
+	"""Start the first turn after all systems are properly synchronized"""
+	print("=== STARTING FIRST TURN ===")
+	if characters.size() == 0:
+		print("ERROR: Cannot start turn - no characters available")
+		return
+	
+	# Only host should start the turn
+	if NetworkManager and NetworkManager.is_host:
+		_start_turn.rpc()
+	else:
+		print("Non-host waiting for turn to be started by host") 
+
+func _cleanup_existing_connections() -> void:
+	"""Clean up any existing signal connections"""
+	# Disconnect button signals
+	if end_turn_button and end_turn_button.pressed.is_connected(_on_end_turn_pressed):
+		end_turn_button.pressed.disconnect(_on_end_turn_pressed)
+	
+	# Disconnect character signals
+	for character in characters:
+		if character and is_instance_valid(character):
+			if character.turn_ended.is_connected(_on_character_turn_ended):
+				character.turn_ended.disconnect(_on_character_turn_ended) 
