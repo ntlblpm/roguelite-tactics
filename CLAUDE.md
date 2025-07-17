@@ -123,6 +123,8 @@ Enemy types:
 - Prefer composition over inheritance where possible
 - Use signals for loose coupling between nodes
 - Follow Godot's node naming conventions (PascalCase for nodes, snake_case for methods)
+- Aim to have things set up in the editor where possible instead of writing script code to 
+	apply the changes at runtime. Provide instructions when things need to be set up in the editor.
 
 ### Code Style
 

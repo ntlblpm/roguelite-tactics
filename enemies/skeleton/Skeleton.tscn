@@ -1,4 +1,4 @@
-[gd_scene load_steps=1470 format=3 uid="uid://ltpbs3virnqu"]
+[gd_scene load_steps=1472 format=3 uid="uid://ltpbs3virnqu"]
 
 [ext_resource type="Texture2D" uid="uid://b0qjk1fb4ykn1" path="res://assets/entities/skeleton/Attack1.png" id="1_1mvjd"]
 [ext_resource type="Texture2D" uid="uid://ebw32j1h2b2i" path="res://assets/entities/skeleton/Attack2.png" id="2_2nvke"]
@@ -25,6 +25,8 @@
 [ext_resource type="Texture2D" uid="uid://t37rruen0r4h" path="res://assets/entities/skeleton/TakeDamage.png" id="22_m784y"]
 [ext_resource type="Texture2D" uid="uid://hfib0wkw5cg4" path="res://assets/entities/skeleton/Taunt.png" id="23_n895z"]
 [ext_resource type="Texture2D" uid="uid://dr3wde3ubw1nm" path="res://assets/entities/skeleton/Walk.png" id="24_oa60"]
+[ext_resource type="Script" uid="uid://bh56fgehx2jk" path="res://scripts/ability_component.gd" id="27_8diby"]
+[ext_resource type="Script" uid="uid://cebnkixeeebnd" path="res://scripts/ai_controller.gd" id="28_x02vl"]
 [ext_resource type="Script" uid="uid://bnn8xvywvsmp" path="res://enemies/skeleton/skeleton_enemy.gd" id="skeleton_enemy_script"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
@@ -10627,3 +10629,12 @@ shape = SubResource("CircleShape2D_k0rlq")
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
 occluder = SubResource("OccluderPolygon2D_2r8cv")
+
+[node name="AbilityComponent" type="Node" parent="."]
+script = ExtResource("27_8diby")
+ability_name = "Attack1"
+description = "Basic melee attack"
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="AIController" type="Node" parent="."]
+script = ExtResource("28_x02vl")
