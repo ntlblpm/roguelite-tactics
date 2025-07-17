@@ -9,12 +9,16 @@ extends Node2D
 @export var archer_scene: PackedScene = preload("res://players/archer/Archer.tscn")
 @export var pyromancer_scene: PackedScene = preload("res://players/pyromancer/Pyromancer.tscn")
 
+# Scene references for enemies
+@export var skeleton_scene: PackedScene = preload("res://enemies/skeleton/Skeleton.tscn")
+
 # System managers
 var grid_manager: GridManager
 var turn_manager: TurnManager
 
 # Game entities - now supports multiple players
 var player_characters: Dictionary = {} # peer_id -> BaseCharacter
+var enemy_characters: Array[BaseCharacter] = [] # Array of enemy characters
 var current_player_id: int = -1
 var is_spawning_characters: bool = false  # Prevent duplicate spawning
 
@@ -23,6 +27,11 @@ var starting_positions: Array[Vector2i] = [
 	Vector2i(0, 0),    # Player 1
 	Vector2i(-2, 2),   # Player 2
 	Vector2i(2, -2)    # Player 3
+]
+
+# Starting positions for enemies (for testing)
+var enemy_spawn_positions: Array[Vector2i] = [
+	Vector2i(3, -2)    # Single skeleton in top right area
 ]
 
 # UI references
@@ -376,10 +385,14 @@ func _spawn_all_characters_internal(players_data: Array) -> void:
 		print("Processing player ", i + 1, ": ", player_data)
 		_spawn_character(player_data.peer_id, player_data.selected_class, start_position)
 	
+	# Spawn enemies after players
+	_spawn_enemies()
+	
 	is_spawning_characters = false
 	
 	print("=== SPAWNING COMPLETE ===")
 	print("Total characters spawned: ", player_characters.size())
+	print("Total enemies spawned: ", enemy_characters.size())
 	print("Characters by peer ID: ", player_characters.keys())
 
 func _clear_existing_characters() -> void:
@@ -405,6 +418,15 @@ func _clear_existing_characters() -> void:
 			character.queue_free()
 	
 	player_characters.clear()
+	
+	# Clear enemies too
+	print("Clearing existing enemies: ", enemy_characters.size())
+	for enemy in enemy_characters:
+		if enemy and is_instance_valid(enemy):
+			print("Clearing existing enemy: ", enemy.character_type)
+			enemy.queue_free()
+	
+	enemy_characters.clear()
 	
 	# Wait a frame to ensure cleanup is complete
 	await get_tree().process_frame
@@ -448,7 +470,54 @@ func _spawn_character(peer_id: int, character_class: String, position: Vector2i)
 	
 	print("Spawned ", character_class, " for peer ", peer_id, " at position ", position)
 
+func _spawn_enemies() -> void:
+	"""Spawn enemy characters for testing"""
+	print("=== SPAWNING ENEMIES ===")
+	
+	# Spawn skeletons at predefined positions
+	for i in range(min(1, enemy_spawn_positions.size())):  # Spawn up to 1 skeleton
+		var spawn_position = enemy_spawn_positions[i]
+		_spawn_enemy("Skeleton", spawn_position, i)
+	
+	print("Spawned ", enemy_characters.size(), " enemies")
 
+func _spawn_enemy(enemy_type: String, position: Vector2i, enemy_id: int) -> void:
+	"""Spawn a single enemy"""
+	var enemy_scene: PackedScene
+	
+	# Select the appropriate enemy scene
+	match enemy_type:
+		"Skeleton":
+			enemy_scene = skeleton_scene
+		_:
+			print("Unknown enemy type: ", enemy_type, " defaulting to Skeleton")
+			enemy_scene = skeleton_scene
+	
+	if not enemy_scene:
+		print("ERROR: No scene found for enemy type: ", enemy_type)
+		return
+	
+	# Instantiate the enemy
+	var enemy = enemy_scene.instantiate() as BaseCharacter
+	enemy.name = enemy_type + "_" + str(enemy_id)
+	
+	# Set multiplayer authority to host (enemies are controlled by host)
+	enemy.set_multiplayer_authority(1)
+	
+	# Position enemy
+	enemy.grid_position = position
+	enemy.target_grid_position = position
+	
+	# Add to scene
+	$CombatArea.add_child(enemy)
+	
+	# Store reference
+	enemy_characters.append(enemy)
+	
+	# Ensure enemy renders above movement highlights
+	enemy.z_index = 2
+	
+	print("Spawned ", enemy_type, " at position ", position)
 
 func _connect_systems() -> void:
 	"""Connect all systems together"""
@@ -467,6 +536,8 @@ func _connect_systems() -> void:
 		return
 	
 	var character_list: Array[BaseCharacter] = []
+	
+	# Process player characters
 	for peer_id in player_characters:
 		var character = player_characters[peer_id]
 		if not character or not is_instance_valid(character):
@@ -492,6 +563,23 @@ func _connect_systems() -> void:
 			print("Connected UI signals for local player character: ", character.character_type)
 		
 		character_list.append(character)
+	
+	# Process enemy characters
+	print("Processing ", enemy_characters.size(), " enemies")
+	for enemy in enemy_characters:
+		if not enemy or not is_instance_valid(enemy):
+			print("ERROR: Invalid enemy character!")
+			continue
+		
+		print("Processing enemy: ", enemy.character_type, " at ", enemy.grid_position)
+		
+		# Set grid manager reference
+		enemy.grid_manager = grid_manager
+		
+		# Position enemy in world coordinates and register with grid manager
+		enemy.set_grid_position(enemy.grid_position)
+		
+		character_list.append(enemy)
 	
 	print("Character list size: ", character_list.size())
 	
@@ -633,12 +721,18 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current > 0:
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
+			# Double-check that this is not an AI character
+			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+				return  # Don't update movement highlights for AI characters
+			
 			grid_manager.highlight_movement_range(current_turn_character.grid_position, current, current_turn_character)
 	elif grid_manager:
 		# Clear highlights if no movement points remaining or not local player's turn or turn not active
 		grid_manager.clear_movement_highlights()
 		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
-			chat_panel.add_system_message("No movement points remaining - Movement range cleared")
+			var current_turn_character = turn_manager.get_current_character()
+			if current_turn_character and not (current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled()):
+				chat_panel.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_action_points_changed(current: int, maximum: int) -> void:
 	## Update AP display when action points change
@@ -662,6 +756,10 @@ func _on_character_selected() -> void:
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active():
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
+			# Double-check that this is not an AI character
+			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+				return  # Don't show movement highlights for AI characters
+			
 			# Show movement range when selected
 			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points, current_turn_character)
 			
@@ -675,7 +773,7 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 	print("DEBUG: Turn active: ", turn_manager.is_character_turn_active() if turn_manager else "N/A")
 	print("DEBUG: Is local player turn: ", turn_manager.is_local_player_turn() if turn_manager else "N/A")
 	
-	# Only allow input if it's the local player's turn
+	# Only allow input if it's the local player's turn AND the current character is not AI-controlled
 	if not turn_manager or not turn_manager.is_character_turn_active() or not turn_manager.is_local_player_turn():
 		if turn_manager and turn_manager.is_character_turn_active() and not turn_manager.is_local_player_turn():
 			var current_turn_character = turn_manager.get_current_character()
@@ -684,10 +782,17 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 				chat_panel.add_system_message("It's " + player_name + "'s turn, not yours!")
 		return
 	
-	# Get the character whose turn it is (which must be ours due to the checks above)
+	# Get the character whose turn it is
 	var current_turn_character = turn_manager.get_current_character()
 	if not current_turn_character:
 		print("DEBUG: No current turn character found")
+		return
+	
+	# IMPORTANT: Block input if the current character is AI-controlled (enemy)
+	if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+		print("DEBUG: Cannot control AI character - it's an enemy's turn")
+		if chat_panel:
+			chat_panel.add_system_message("Cannot control enemy characters - AI is taking its turn")
 		return
 	
 	print("DEBUG: Current turn character: ", current_turn_character.character_type, " at ", current_turn_character.grid_position)
@@ -718,6 +823,10 @@ func _on_movement_completed(new_position: Vector2i) -> void:
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active():
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
+			# Double-check that this is not an AI character
+			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+				return  # Don't update movement highlights for AI characters
+			
 			# Immediately update movement range from the new position
 			grid_manager.highlight_movement_range(new_position, current_turn_character.current_movement_points, current_turn_character)
 			if chat_panel:
@@ -727,10 +836,20 @@ func _on_turn_started(character: BaseCharacter) -> void:
 	"""Handle when a turn starts - update turn order UI and display current character stats"""
 	_update_turn_order_ui()
 	
-	# Update the stat display to show the current character's stats (if it's the local player's turn)
+	# Update the stat display to show the current character's stats (if it's the local player's turn AND not AI)
 	if turn_manager and turn_manager.is_local_player_turn():
 		var current_turn_character = turn_manager.get_current_character()
 		if current_turn_character:
+			# Check if the current character is AI-controlled (enemy)
+			if current_turn_character.has_method("is_ai_controlled") and current_turn_character.is_ai_controlled():
+				# It's an enemy turn - clear movement highlights and don't update player UI
+				if grid_manager:
+					grid_manager.clear_movement_highlights()
+				if chat_panel:
+					chat_panel.add_combat_message("Enemy " + current_turn_character.character_type + " is taking their turn...")
+				return
+			
+			# It's a real player turn - update UI normally
 			# Manually update the stat displays to show the current character's stats
 			if hp_text:
 				hp_text.text = "%d/%d" % [current_turn_character.current_health_points, current_turn_character.max_health_points]
@@ -926,10 +1045,14 @@ func get_current_player_character() -> BaseCharacter:
 	return null
 
 func get_all_characters() -> Array[BaseCharacter]:
-	"""Get all player characters"""
+	"""Get all characters (players and enemies)"""
 	var characters: Array[BaseCharacter] = []
+	# Add player characters
 	for character in player_characters.values():
 		characters.append(character)
+	# Add enemy characters
+	for enemy in enemy_characters:
+		characters.append(enemy)
 	return characters
 
 func get_character_by_peer_id(peer_id: int) -> BaseCharacter:
@@ -946,6 +1069,8 @@ func _input(event: InputEvent) -> void:
 				_debug_test_movement()
 			KEY_F3:
 				_debug_test_damage()
+			KEY_F4:
+				_debug_test_enemy_ai()
 			KEY_G:
 				_toggle_grid_borders()
 
@@ -963,6 +1088,10 @@ func _debug_print_game_state() -> void:
 	for peer_id in player_characters:
 		var character = player_characters[peer_id]
 		print("Peer ", peer_id, ": ", character.character_type, " at ", character.grid_position)
+	
+	print("Total enemies: ", enemy_characters.size())
+	for enemy in enemy_characters:
+		print("Enemy: ", enemy.character_type, " at ", enemy.grid_position, " - ", enemy.get_stats_summary())
 	
 	if turn_manager:
 		turn_manager.debug_print_turn_state()
@@ -986,6 +1115,42 @@ func _debug_test_damage() -> void:
 	if current_character:
 		current_character.take_damage(10)
 		print("Applied 10 damage to current character")
+
+func _debug_test_enemy_ai() -> void:
+	"""Debug function to test enemy AI"""
+	print("\n=== ENEMY AI DEBUG TEST ===")
+	
+	if enemy_characters.size() == 0:
+		print("No enemies to test")
+		return
+	
+	for i in range(enemy_characters.size()):
+		var enemy = enemy_characters[i]
+		if not enemy or not is_instance_valid(enemy):
+			print("Enemy ", i, ": INVALID")
+			continue
+		
+		print("Enemy ", i, ": ", enemy.character_type)
+		print("  - Authority: ", enemy.get_multiplayer_authority())
+		print("  - Grid Position: ", enemy.grid_position)
+		print("  - Stats: ", enemy.get_stats_summary())
+		print("  - Is AI Controlled: ", enemy.has_method("is_ai_controlled") and enemy.is_ai_controlled())
+		print("  - Has AI Methods: start_ai_turn=", enemy.has_method("start_ai_turn"), " handle_turn_start=", enemy.has_method("handle_turn_start"))
+		
+		# Test AI turn if it's the current character
+		if turn_manager and turn_manager.get_current_character() == enemy:
+			print("  - This enemy is the current character in turn order")
+			print("  - Turn Manager thinks is_local_player_turn: ", turn_manager.is_local_player_turn())
+			print("  - Turn active: ", turn_manager.is_character_turn_active())
+		
+		# Force test AI logic for first enemy
+		if i == 0 and enemy.has_method("start_ai_turn"):
+			print("  - Force testing AI logic...")
+			enemy.start_ai_turn()
+			if chat_panel:
+				chat_panel.add_system_message("DEBUG: Forced AI turn for " + enemy.character_type)
+	
+	print("=== ENEMY AI DEBUG TEST COMPLETE ===\n")
 
 func _toggle_grid_borders() -> void:
 	"""Debug function to toggle grid border visibility"""

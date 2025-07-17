@@ -138,8 +138,37 @@ func _start_turn() -> void:
 	turn_started.emit(current_character)
 	combat_phase_changed.emit("player_turn")
 	
+	# Check if this is an AI-controlled enemy and start their AI logic
+	if current_character.has_method("is_ai_controlled") and current_character.is_ai_controlled():
+		print("Starting AI turn for enemy: ", current_character.character_type)
+		combat_phase_changed.emit("enemy_turn")
+		# Start AI logic on the next frame to ensure proper setup
+		call_deferred("_start_enemy_ai_turn")
+	
 	# Sync turn state across all clients
 	_broadcast_turn_update.rpc()
+
+func _start_enemy_ai_turn() -> void:
+	"""Start AI logic for the current enemy character"""
+	if not current_character or not is_turn_active:
+		print("ERROR: Cannot start enemy AI turn - no current character or turn not active")
+		return
+	
+	if not (current_character.has_method("is_ai_controlled") and current_character.is_ai_controlled()):
+		print("ERROR: Attempted to start AI turn for non-AI character: ", current_character.character_type)
+		return
+	
+	print("=== STARTING ENEMY AI TURN: ", current_character.character_type, " ===")
+	
+	# Call the enemy's AI turn start method
+	if current_character.has_method("handle_turn_start"):
+		current_character.handle_turn_start()
+	elif current_character.has_method("start_ai_turn"):
+		current_character.start_ai_turn()
+	else:
+		print("ERROR: Enemy ", current_character.character_type, " has no AI turn method")
+		# Force end turn to prevent getting stuck
+		_end_current_turn.rpc()
 
 @rpc("any_peer", "call_local", "reliable")
 func _broadcast_turn_update() -> void:
@@ -282,6 +311,11 @@ func is_character_turn_active() -> bool:
 func is_local_player_turn() -> bool:
 	"""Check if it's the local player's turn"""
 	if not current_character:
+		return false
+	
+	# First check if this is an AI-controlled character (enemy)
+	if current_character.has_method("is_ai_controlled") and current_character.is_ai_controlled():
+		# AI characters are never controlled by local players, even if they have the same authority
 		return false
 	
 	# Check if the current character belongs to the local player

@@ -1,4 +1,4 @@
-[gd_scene load_steps=1468 format=3 uid="uid://ltpbs3virnqu"]
+[gd_scene load_steps=1469 format=3 uid="uid://ltpbs3virnqu"]
 
 [ext_resource type="Texture2D" uid="uid://b0qjk1fb4ykn1" path="res://assets/entities/skeleton/Attack1.png" id="1_1mvjd"]
 [ext_resource type="Texture2D" uid="uid://ebw32j1h2b2i" path="res://assets/entities/skeleton/Attack2.png" id="2_2nvke"]
@@ -24,6 +24,7 @@
 [ext_resource type="Texture2D" uid="uid://t37rruen0r4h" path="res://assets/entities/skeleton/TakeDamage.png" id="22_m784y"]
 [ext_resource type="Texture2D" uid="uid://hfib0wkw5cg4" path="res://assets/entities/skeleton/Taunt.png" id="23_n895z"]
 [ext_resource type="Texture2D" uid="uid://dr3wde3ubw1nm" path="res://assets/entities/skeleton/Walk.png" id="24_oa60"]
+[ext_resource type="Script" uid="uid://bnn8xvywvsmp" path="res://enemies/skeleton/skeleton_enemy.gd" id="skeleton_enemy_script"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("1_1mvjd")
@@ -10601,6 +10602,7 @@ polygon = PackedVector2Array(-9, -1, -9, -15, 10, -15, 10, 1, 1, 3)
 
 [node name="Skeleton" type="CharacterBody2D"]
 scale = Vector2(0.5, 0.5)
+script = ExtResource("skeleton_enemy_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)
