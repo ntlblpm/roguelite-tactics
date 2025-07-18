@@ -1,4 +1,4 @@
-[gd_scene load_steps=1471 format=3 uid="uid://bo3b61y85pfye"]
+[gd_scene load_steps=1472 format=3 uid="uid://bo3b61y85pfye"]
 
 [ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://resources/shadow.tres" id="1_jcadq"]
 [ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="2_um4yn"]
@@ -26,6 +26,7 @@
 [ext_resource type="Texture2D" uid="uid://cud7sw58w4qnv" path="res://assets/entities/ranger/StrafeRight.png" id="24_straferight"]
 [ext_resource type="Texture2D" uid="uid://iss6dm0h8gr" path="res://assets/entities/ranger/TakeDamage.png" id="25_takedamage"]
 [ext_resource type="Texture2D" uid="uid://dmb5muvbq3716" path="res://assets/entities/ranger/Taunt.png" id="26_taunt"]
+[ext_resource type="Script" uid="uid://bh56fgehx2jk" path="res://components/ability_component.gd" id="28_wenpw"]
 [ext_resource type="Script" uid="uid://2wr86hdhe07t" path="res://players/Ranger/ranger.gd" id="30_ranger"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
@@ -10604,9 +10605,7 @@ script = ExtResource("30_ranger")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_f7ie2")
-animation = &"Attack5BottomLeft"
-frame = 14
-frame_progress = 1.0
+animation = &"Attack1TopRight"
 
 [node name="Shadow" type="Sprite2D" parent="."]
 visible = false
@@ -10628,3 +10627,20 @@ occluder = SubResource("OccluderPolygon2D_7vcwg")
 script = ExtResource("2_um4yn")
 max_health_points = 70
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
+
+[node name="A1_Shoot" type="Node" parent="."]
+script = ExtResource("28_wenpw")
+ability_name = "Shoot"
+description = "Shoot arrow"
+damage = 12
+ap_cost = 4
+range = 4
+animation = "Attack3"
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="A2_Bow Swing" type="Node" parent="."]
+script = ExtResource("28_wenpw")
+ability_name = "Bow Swing"
+description = "Melee swing with bow"
+ap_cost = 4
+metadata/_custom_type_script = "uid://bh56fgehx2jk"

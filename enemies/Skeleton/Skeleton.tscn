@@ -10623,13 +10623,6 @@ shape = SubResource("CircleShape2D_50w72")
 visible = false
 occluder = SubResource("OccluderPolygon2D_bbt42")
 
-[node name="AbilityComponent" type="Node" parent="."]
-script = ExtResource("25_mx232")
-ability_name = "Attack1"
-description = "Basic melee attack"
-take_damage_delay = 0.2
-metadata/_custom_type_script = "uid://bh56fgehx2jk"
-
 [node name="AIController" type="Node" parent="."]
 script = ExtResource("26_7s2aq")
 
@@ -10637,3 +10630,10 @@ script = ExtResource("26_7s2aq")
 script = ExtResource("27_x35wm")
 max_health_points = 50
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
+
+[node name="AE_Melee Strike" type="Node" parent="."]
+script = ExtResource("25_mx232")
+ability_name = "Melee Strike"
+description = "Basic melee attack"
+take_damage_delay = 0.2
+metadata/_custom_type_script = "uid://bh56fgehx2jk"

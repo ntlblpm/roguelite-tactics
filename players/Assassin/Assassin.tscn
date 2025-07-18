@@ -1,4 +1,4 @@
-[gd_scene load_steps=1471 format=3 uid="uid://d23luannu5ury"]
+[gd_scene load_steps=1472 format=3 uid="uid://d23luannu5ury"]
 
 [ext_resource type="Texture2D" uid="uid://chjaiosm2ch1t" path="res://assets/entities/assassin/Attack1.png" id="1_1nrfo"]
 [ext_resource type="Texture2D" uid="uid://c7nrgkgt65dk5" path="res://assets/entities/assassin/Attack2.png" id="2_4gnun"]
@@ -27,6 +27,7 @@
 [ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://resources/shadow.tres" id="25_7ww8a"]
 [ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="26_12r4g"]
 [ext_resource type="Script" uid="uid://d1sdybn21a6wu" path="res://players/Assassin/assassin.gd" id="27_assassin"]
+[ext_resource type="Script" uid="uid://bh56fgehx2jk" path="res://components/ability_component.gd" id="28_8dvh0"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("1_1nrfo")
@@ -10604,7 +10605,7 @@ script = ExtResource("27_assassin")
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_f2r2t")
-animation = &"Attack4TopLeft"
+animation = &"Attack5BottomRight"
 frame = 14
 frame_progress = 1.0
 
@@ -10628,3 +10629,19 @@ occluder = SubResource("OccluderPolygon2D_cvuuu")
 script = ExtResource("26_12r4g")
 max_health_points = 70
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
+
+[node name="A1_Slash" type="Node" parent="."]
+script = ExtResource("28_8dvh0")
+ability_name = "Slash"
+description = "Dagger slash"
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="A2_Shuriken Toss" type="Node" parent="."]
+script = ExtResource("28_8dvh0")
+ability_name = "Shuriken Toss"
+description = "Throw small shurikens"
+damage = 6
+ap_cost = 2
+range = 3
+animation = "Attack5"
+metadata/_custom_type_script = "uid://bh56fgehx2jk"

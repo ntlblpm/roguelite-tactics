@@ -10603,7 +10603,7 @@ scale = Vector2(0.5, 0.5)
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_ajery")
-animation = &"Idle4BottomLeft"
+animation = &"Attack2BottomLeft"
 
 [node name="Shadow" type="Sprite2D" parent="."]
 visible = false
@@ -10620,13 +10620,6 @@ shape = SubResource("CircleShape2D_xwe87")
 visible = false
 occluder = SubResource("OccluderPolygon2D_v18pg")
 
-[node name="AbilityComponent" type="Node" parent="."]
-script = ExtResource("25_q682w")
-ability_name = "Attack1"
-description = "Basic melee attack"
-take_damage_delay = 0.2
-metadata/_custom_type_script = "uid://bh56fgehx2jk"
-
 [node name="AIController" type="Node" parent="."]
 script = ExtResource("26_4f5l5")
 
@@ -10634,3 +10627,23 @@ script = ExtResource("26_4f5l5")
 script = ExtResource("25_sc30x")
 max_health_points = 50
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
+
+[node name="AE_Dark Strike" type="Node" parent="."]
+script = ExtResource("25_q682w")
+ability_name = "Strike"
+description = "Basic melee attack"
+damage = 25
+ap_cost = 4
+take_damage_delay = 0.2
+animation = "Attack2"
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="AE_Demolish" type="Node" parent="."]
+script = ExtResource("25_q682w")
+ability_name = "Strike"
+description = "Basic melee attack"
+damage = 40
+ap_cost = 5
+take_damage_delay = 0.2
+animation = "Attack4"
+metadata/_custom_type_script = "uid://bh56fgehx2jk"

@@ -1,4 +1,4 @@
-[gd_scene load_steps=557 format=3 uid="uid://c5ihi74sr3fih"]
+[gd_scene load_steps=558 format=3 uid="uid://c5ihi74sr3fih"]
 
 [ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://resources/shadow.tres" id="1_jpnaj"]
 [ext_resource type="Script" uid="uid://b6n6ml2jg3wlv" path="res://players/Pyromancer/pyromancer.gd" id="1_script"]
@@ -13,6 +13,7 @@
 [ext_resource type="Texture2D" uid="uid://cukblyo1mupwg" path="res://assets/entities/pyromancer/Attack3.png" id="9_attack3"]
 [ext_resource type="Texture2D" uid="uid://t1568dpg7pwq" path="res://assets/entities/pyromancer/Special1.png" id="10_special1"]
 [ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="13_ipelj"]
+[ext_resource type="Script" uid="uid://bh56fgehx2jk" path="res://components/ability_component.gd" id="14_a0fdx"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("4_attack1")
@@ -3991,8 +3992,9 @@ script = ExtResource("1_script")
 material = ExtResource("2_evg4x")
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_t8wj3")
-animation = &"RunTopRight"
-frame_progress = 0.219467
+animation = &"Special1BottomLeft"
+frame = 14
+frame_progress = 1.0
 
 [node name="Shadow" type="Sprite2D" parent="."]
 visible = false
@@ -4014,3 +4016,22 @@ occluder = SubResource("OccluderPolygon2D_1dx4e")
 script = ExtResource("13_ipelj")
 max_health_points = 70
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
+
+[node name="A1_Flame Strike" type="Node" parent="."]
+script = ExtResource("14_a0fdx")
+ability_name = "Flame Strike"
+description = "Fire-infused melee strike"
+damage = 15
+ap_cost = 4
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="A2_Fire Nova" type="Node" parent="."]
+script = ExtResource("14_a0fdx")
+ability_name = "Fire Nova"
+description = "Near-range explosion"
+damage = 30
+ap_cost = 6
+range = 2
+animation = "Special1"
+cooldown = 1
+metadata/_custom_type_script = "uid://bh56fgehx2jk"

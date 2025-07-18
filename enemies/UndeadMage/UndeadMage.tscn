@@ -10608,7 +10608,7 @@ scale = Vector2(0.5, 0.5)
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)
 sprite_frames = SubResource("SpriteFrames_m6tnu")
-animation = &"Attack4TopLeft"
+animation = &"Special1TopRight"
 frame = 14
 frame_progress = 1.0
 
@@ -10627,13 +10627,6 @@ shape = SubResource("CircleShape2D_mov5y")
 visible = false
 occluder = SubResource("OccluderPolygon2D_ycynl")
 
-[node name="AbilityComponent" type="Node" parent="."]
-script = ExtResource("25_j0wd1")
-ability_name = "Attack1"
-description = "Basic melee attack"
-take_damage_delay = 0.2
-metadata/_custom_type_script = "uid://bh56fgehx2jk"
-
 [node name="AIController" type="Node" parent="."]
 script = ExtResource("26_84v5j")
 
@@ -10641,3 +10634,23 @@ script = ExtResource("26_84v5j")
 script = ExtResource("25_wr51o")
 max_health_points = 50
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
+
+[node name="A1_Ice Bolt" type="Node" parent="."]
+script = ExtResource("25_j0wd1")
+ability_name = "Frost Bolt"
+description = "Ice projectile"
+damage = 15
+range = 3
+take_damage_delay = 0.8
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="A2_Frost Nova" type="Node" parent="."]
+script = ExtResource("25_j0wd1")
+ability_name = "Frost Nova"
+description = "Cold explosion"
+damage = 35
+ap_cost = 5
+range = 2
+take_damage_delay = 0.2
+cooldown = 1
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
