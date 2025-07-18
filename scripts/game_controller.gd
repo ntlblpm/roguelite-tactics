@@ -47,6 +47,11 @@ var end_turn_button: Button
 var give_up_button: Button
 var chat_panel: ChatPanel
 
+# Ability bar elements
+var ability_buttons: Array[Button] = []
+var selected_ability: AbilityComponent = null
+var ability_targeting_mode: bool = false
+
 # Turn order UI elements
 var current_entity_name: Label
 var current_entity_hp: Label
@@ -63,6 +68,58 @@ func _ready() -> void:
 	
 	# Don't initialize multiplayer game immediately - defer to next frame to ensure clean state
 	call_deferred("_deferred_multiplayer_initialization")
+
+func _input(event: InputEvent) -> void:
+	"""Handle keyboard shortcuts for abilities"""
+	if not event is InputEventKey or not event.pressed:
+		return
+		
+	# Only process if it's the local player's turn
+	if not turn_manager or not turn_manager.is_local_player_turn() or not turn_manager.is_character_turn_active():
+		return
+		
+	# Check for ability shortcuts 1-6
+	var key_code = event.keycode
+	var ability_index = -1
+	
+	if key_code >= KEY_1 and key_code <= KEY_6:
+		ability_index = key_code - KEY_1
+	elif key_code >= KEY_KP_1 and key_code <= KEY_KP_6:
+		ability_index = key_code - KEY_KP_1
+		
+	if ability_index >= 0 and ability_index < ability_buttons.size():
+		_on_ability_button_pressed(ability_index)
+		get_viewport().set_input_as_handled()
+	
+	# ESC to cancel ability targeting
+	elif key_code == KEY_ESCAPE and ability_targeting_mode:
+		# Cancel ability targeting
+		ability_targeting_mode = false
+		selected_ability = null
+		
+		# Clear highlights and show movement range again
+		if grid_manager:
+			grid_manager.clear_movement_highlights()
+			var current_character = turn_manager.get_current_character()
+			if current_character and current_character.resources.get_movement_points() > 0:
+				grid_manager.highlight_movement_range(current_character.grid_position, current_character.resources.get_movement_points(), current_character)
+		
+		if chat_panel:
+			chat_panel.add_system_message("Ability targeting cancelled")
+		
+		get_viewport().set_input_as_handled()
+	
+	# Handle debug keys
+	elif event.keycode == KEY_F1:
+		_debug_print_game_state()
+	elif event.keycode == KEY_F2:
+		_debug_test_movement()
+	elif event.keycode == KEY_F3:
+		_debug_test_damage()
+	elif event.keycode == KEY_F4:
+		_debug_test_enemy_ai()
+	elif event.keycode == KEY_G:
+		_toggle_grid_borders()
 
 func _deferred_multiplayer_initialization() -> void:
 	"""Initialize multiplayer game after ensuring clean state"""
@@ -161,6 +218,15 @@ func _setup_ui_references() -> void:
 		
 		# Get confirmation dialog
 		give_up_confirmation_dialog = combat_ui.get_node("UILayer/MainUI/GiveUpConfirmationDialog")
+		
+		# Get ability buttons
+		ability_buttons.clear()
+		for i in range(1, 7):
+			var button: Button = combat_ui.get_node("UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid/Ability" + str(i))
+			if button:
+				ability_buttons.append(button)
+				# Connect button click
+				button.pressed.connect(_on_ability_button_pressed.bind(i - 1))
 
 func _initialize_multiplayer_game() -> void:
 	"""Initialize the multiplayer game based on NetworkManager data"""
@@ -666,6 +732,39 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 			chat_panel.add_system_message("Cannot control enemy characters - AI is taking its turn")
 		return
 	
+	# Check if we're in ability targeting mode
+	if ability_targeting_mode and selected_ability:
+		# Attempt to use the ability
+		var ability_successful = await selected_ability.use_ability(grid_position)
+		
+		if ability_successful:
+			if chat_panel:
+				var player_name = _get_player_name_for_character(current_turn_character)
+				chat_panel.add_combat_message("%s used %s!" % [player_name, selected_ability.ability_name])
+			
+			# Update UI after ability use
+			_update_ability_bar(current_turn_character)
+			
+			# Update stat displays
+			if hp_text:
+				hp_text.text = "%d/%d" % [current_turn_character.resources.current_health_points, current_turn_character.resources.max_health_points]
+			if ap_text:
+				ap_text.text = "%d/%d" % [current_turn_character.resources.current_ability_points, current_turn_character.resources.max_ability_points]
+		else:
+			if chat_panel:
+				chat_panel.add_system_message("Invalid target for " + selected_ability.ability_name)
+		
+		# Exit ability targeting mode
+		ability_targeting_mode = false
+		selected_ability = null
+		
+		# Clear highlights and show movement range again if character has MP
+		if grid_manager:
+			grid_manager.clear_movement_highlights()
+			if current_turn_character.resources.get_movement_points() > 0:
+				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
+		return
+	
 	# Check if clicking on current character (selection)
 	if grid_position == current_turn_character.grid_position:
 		current_turn_character.character_selected.emit()
@@ -726,10 +825,18 @@ func _on_turn_started(_character: BaseCharacter) -> void:
 			# Show movement range for the current character
 			if grid_manager and current_turn_character.resources.get_movement_points() > 0:
 				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
+			
+			# Update ability bar for the current character
+			_update_ability_bar(current_turn_character)
 	else:
 		# If it's not the local player's turn, clear movement highlights
 		if grid_manager:
 			grid_manager.clear_movement_highlights()
+		
+		# Disable all ability buttons when it's not the player's turn
+		for button in ability_buttons:
+			button.disabled = true
+			button.modulate = Color(0.5, 0.5, 0.5, 1.0)
 
 func _on_turn_ended(_character: BaseCharacter) -> void:
 	"""Handle when a turn ends"""
@@ -907,20 +1014,6 @@ func get_character_by_peer_id(peer_id: int) -> BaseCharacter:
 	"""Get character by peer ID"""
 	return player_characters.get(peer_id, null)
 
-func _input(event: InputEvent) -> void:
-	# Handle debug keys
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_F1:
-				_debug_print_game_state()
-			KEY_F2:
-				_debug_test_movement()
-			KEY_F3:
-				_debug_test_damage()
-			KEY_F4:
-				_debug_test_enemy_ai()
-			KEY_G:
-				_toggle_grid_borders()
 
 func _debug_print_game_state() -> void:
 	"""Debug function to print current game state"""
@@ -1007,4 +1100,102 @@ func get_grid_manager() -> GridManager:
 
 func get_turn_manager() -> TurnManager:
 	"""Get reference to the turn manager"""
-	return turn_manager 
+	return turn_manager
+
+func _update_ability_bar(character: BaseCharacter) -> void:
+	"""Update the ability bar to show the current character's abilities"""
+	if ability_buttons.is_empty():
+		return
+	
+	# Clear ability targeting mode
+	ability_targeting_mode = false
+	selected_ability = null
+	
+	# Get all ability components from the character
+	var abilities: Array[Node] = character.get_children().filter(func(child): return child is AbilityComponent)
+	
+	# Update each button
+	for i in range(ability_buttons.size()):
+		var button: Button = ability_buttons[i]
+		
+		if i < abilities.size():
+			var ability: AbilityComponent = abilities[i]
+			# Show ability
+			button.visible = true
+			
+			# Format button text with AP cost and cooldown
+			var button_text = ability.ability_name + "\n"
+			button_text += "AP: " + str(ability.ap_cost)
+			
+			# Show cooldown if active
+			if ability.current_cooldown > 0:
+				button_text += " (CD: " + str(ability.current_cooldown) + ")"
+			
+			button.text = button_text
+			
+			# Update button state based on availability
+			# Check basic requirements (cooldown and AP)
+			var can_use: bool = ability.current_cooldown == 0 and character.resources.current_ability_points >= ability.ap_cost
+			button.disabled = not can_use
+			
+			# Store ability reference in button metadata
+			button.set_meta("ability", ability)
+			
+			# Update visual state
+			if ability.current_cooldown > 0:
+				# On cooldown - show red tint
+				button.modulate = Color(1.0, 0.5, 0.5, 1.0)
+			elif character.resources.current_ability_points < ability.ap_cost:
+				# Not enough AP - show blue tint
+				button.modulate = Color(0.5, 0.5, 1.0, 1.0)
+			elif not can_use:
+				# Other reason - grey out
+				button.modulate = Color(0.5, 0.5, 0.5, 1.0)
+			else:
+				# Can use - normal color
+				button.modulate = Color.WHITE
+		else:
+			# Hide unused buttons
+			button.visible = false
+			button.set_meta("ability", null)
+
+func _on_ability_button_pressed(button_index: int) -> void:
+	"""Handle ability button press"""
+	if button_index >= ability_buttons.size():
+		return
+		
+	var button: Button = ability_buttons[button_index]
+	if not button.visible or button.disabled:
+		return
+		
+	var ability: AbilityComponent = button.get_meta("ability")
+	if not ability:
+		return
+		
+	# Enter ability targeting mode
+	ability_targeting_mode = true
+	selected_ability = ability
+	
+	# Clear any existing movement highlights
+	if grid_manager:
+		grid_manager.clear_movement_highlights()
+		
+	# Show ability range
+	var current_character = turn_manager.get_current_character()
+	if current_character and grid_manager:
+		_show_ability_range(current_character, ability)
+		
+	if chat_panel:
+		chat_panel.add_system_message("Select a target for " + ability.ability_name)
+
+func _show_ability_range(character: BaseCharacter, ability: AbilityComponent) -> void:
+	"""Show the range for an ability using blue highlights"""
+	if not grid_manager:
+		return
+		
+	# Get all tiles within ability range
+	var tiles_in_range: Array[Vector2i] = grid_manager.get_tiles_within_range(character.grid_position, ability.range)
+	
+	# Highlight them in blue (we'll need to add a method to grid_manager for this)
+	for tile in tiles_in_range:
+		grid_manager.highlight_tile(tile, Color(0.2, 0.5, 1.0, 0.5))  # Blue color 

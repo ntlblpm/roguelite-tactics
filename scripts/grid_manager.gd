@@ -525,4 +525,44 @@ func _clear_path_highlights() -> void:
 	if path_highlights_parent:
 		for child in path_highlights_parent.get_children():
 			child.queue_free()
-	current_path_highlights.clear() 
+	current_path_highlights.clear()
+
+func get_tiles_within_range(center: Vector2i, range_value: int) -> Array[Vector2i]:
+	"""Get all tiles within a certain range from a center position"""
+	var tiles: Array[Vector2i] = []
+	
+	for x in range(-range_value, range_value + 1):
+		for y in range(-range_value, range_value + 1):
+			var tile_pos = Vector2i(center.x + x, center.y + y)
+			# Check Manhattan distance for diamond pattern
+			if abs(x) + abs(y) <= range_value and is_position_valid(tile_pos):
+				tiles.append(tile_pos)
+				
+	return tiles
+
+func highlight_tile(grid_position: Vector2i, color: Color) -> void:
+	"""Highlight a single tile with a specific color"""
+	if not is_position_valid(grid_position):
+		return
+		
+	var highlight: Polygon2D = Polygon2D.new()
+	
+	# Create diamond shape that matches isometric tile
+	var half_width: float = tile_size.x * 0.5
+	var half_height: float = tile_size.y * 0.5
+	
+	var diamond_points: PackedVector2Array = PackedVector2Array([
+		Vector2(0, -half_height),
+		Vector2(half_width, 0),
+		Vector2(0, half_height),
+		Vector2(-half_width, 0)
+	])
+	
+	highlight.polygon = diamond_points
+	highlight.color = color
+	highlight.position = grid_to_world(grid_position)
+	highlight.z_index = -1
+	
+	# Add to highlights parent
+	if highlight_tiles_parent:
+		highlight_tiles_parent.add_child(highlight) 
