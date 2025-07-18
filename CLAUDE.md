@@ -73,8 +73,9 @@ This is a multiplayer isometric tactical RPG built in Godot 4.4 featuring peer-t
 
 Available player classes:
 
-- **SwordsmanCharacter**: Melee fighter with close combat abilities
-- **ArcherCharacter**: Ranged attacker with bow skills
+- **KnightCharacter**: Melee fighter with close combat abilities
+- **RangerCharacter**: Ranged attacker with bow skills
+- **AssassinCharacter**: Fast striker with high initiative
 - **PyromancerCharacter**: Magic user with fire spells
 
 Enemy types:

@@ -21,8 +21,8 @@ var host_peer_id: int = 1
 class PlayerInfo:
 	var peer_id: int
 	var player_name: String
-	var selected_class: String = "Swordsman"
-	var class_levels: Dictionary = {"Swordsman": 1, "Archer": 1, "Pyromancer": 1}
+	var selected_class: String = "Knight"
+	var class_levels: Dictionary = {"Knight": 1, "Ranger": 1, "Pyromancer": 1, "Assassin": 1}
 	var is_ready: bool = false
 	
 	func _init(id: int, name: String):

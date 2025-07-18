@@ -1,4 +1,4 @@
-[gd_scene load_steps=1469 format=3 uid="uid://dlrpxxhmyrpjy"]
+[gd_scene load_steps=1471 format=3 uid="uid://dlrpxxhmyrpjy"]
 
 [ext_resource type="Texture2D" uid="uid://cs5j2gt3uo401" path="res://assets/entities/undead mage/Idle.png" id="1_1mvjd"]
 [ext_resource type="Texture2D" uid="uid://b1gqxfb8bwpup" path="res://assets/entities/undead mage/Walk.png" id="2_2nvke"]
@@ -24,7 +24,9 @@
 [ext_resource type="Texture2D" uid="uid://cbnr6nt88ykjg" path="res://assets/entities/undead mage/StrafeRight.png" id="22_2hicy"]
 [ext_resource type="Texture2D" uid="uid://cf8uontru0vcc" path="res://assets/entities/undead mage/TakeDamage.png" id="23_3ijdz"]
 [ext_resource type="Texture2D" uid="uid://clgswkm6bdvq2" path="res://assets/entities/undead mage/Taunt.png" id="24_4jkea"]
+[ext_resource type="Script" uid="uid://bh56fgehx2jk" path="res://components/ability_component.gd" id="25_j0wd1"]
 [ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="25_wr51o"]
+[ext_resource type="Script" uid="uid://cebnkixeeebnd" path="res://scripts/ai_controller.gd" id="26_84v5j"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("3_3owlf")
@@ -10594,10 +10596,10 @@ animations = [{
 "speed": 15.0
 }]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_0vr1a"]
+[sub_resource type="CircleShape2D" id="CircleShape2D_mov5y"]
 radius = 7.0
 
-[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_88orn"]
+[sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_ycynl"]
 polygon = PackedVector2Array(-9, -1, -9, -15, 10, -15, 10, 1, 1, 3)
 
 [node name="UndeadMage" type="CharacterBody2D"]
@@ -10619,12 +10621,23 @@ scale = Vector2(0.22, 0.128)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 visible = false
 position = Vector2(0, -7)
-shape = SubResource("CircleShape2D_0vr1a")
+shape = SubResource("CircleShape2D_mov5y")
 
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
-occluder = SubResource("OccluderPolygon2D_88orn")
+occluder = SubResource("OccluderPolygon2D_ycynl")
+
+[node name="AbilityComponent" type="Node" parent="."]
+script = ExtResource("25_j0wd1")
+ability_name = "Attack1"
+description = "Basic melee attack"
+take_damage_delay = 0.2
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="AIController" type="Node" parent="."]
+script = ExtResource("26_84v5j")
 
 [node name="CombatantResourcesComponent" type="Node" parent="."]
 script = ExtResource("25_wr51o")
+max_health_points = 50
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"

@@ -9,12 +9,14 @@ extends Control
 
 @onready var status_label: Label = $VBoxContainer/StatusLabel
 @onready var class_container: VBoxContainer = $VBoxContainer/ClassSelection
-@onready var swordsman_button: Button = $VBoxContainer/ClassSelection/SwordsmanSection/SwordsmanButton
-@onready var swordsman_level: Label = $VBoxContainer/ClassSelection/SwordsmanSection/SwordsmanLevel
-@onready var archer_button: Button = $VBoxContainer/ClassSelection/ArcherSection/ArcherButton
-@onready var archer_level: Label = $VBoxContainer/ClassSelection/ArcherSection/ArcherLevel
+@onready var knight_button: Button = $VBoxContainer/ClassSelection/KnightSection/KnightButton
+@onready var knight_level: Label = $VBoxContainer/ClassSelection/KnightSection/KnightLevel
+@onready var ranger_button: Button = $VBoxContainer/ClassSelection/RangerSection/RangerButton
+@onready var ranger_level: Label = $VBoxContainer/ClassSelection/RangerSection/RangerLevel
 @onready var pyromancer_button: Button = $VBoxContainer/ClassSelection/PyromancerSection/PyromancerButton
 @onready var pyromancer_level: Label = $VBoxContainer/ClassSelection/PyromancerSection/PyromancerLevel
+@onready var assassin_button: Button = $VBoxContainer/ClassSelection/AssassinSection/AssassinButton
+@onready var assassin_level: Label = $VBoxContainer/ClassSelection/AssassinSection/AssassinLevel
 
 @onready var players_list: VBoxContainer = $VBoxContainer/PlayersSection/PlayersList
 @onready var start_game_button: Button = $VBoxContainer/StartGameButton
@@ -22,7 +24,7 @@ extends Control
 
 # Class button tracking
 var class_buttons: Dictionary = {}
-var current_selected_class: String = "Swordsman"
+var current_selected_class: String = "Knight"
 
 # Player display tracking
 var player_displays: Dictionary = {} # peer_id -> Control node
@@ -30,7 +32,8 @@ var player_displays: Dictionary = {} # peer_id -> Control node
 func _ready() -> void:
 	_setup_ui()
 	_connect_signals()
-	_update_ui_state()
+	# Defer UI state update to ensure network connection is fully established
+	call_deferred("_update_ui_state")
 	
 	# If connected, select the local player's class based on progression
 	if NetworkManager and NetworkManager.connected:
@@ -45,16 +48,17 @@ func _setup_ui() -> void:
 	"""Setup initial UI state"""
 	# Setup class buttons dictionary
 	class_buttons = {
-		"Swordsman": swordsman_button,
-		"Archer": archer_button,
-		"Pyromancer": pyromancer_button
+		"Knight": knight_button,
+		"Ranger": ranger_button,
+		"Pyromancer": pyromancer_button,
+		"Assassin": assassin_button
 	}
 	
 	# Update class levels if we can access progression
 	_update_class_levels()
 	
 	# Select default class
-	_select_class("Swordsman")
+	_select_class("Knight")
 
 func _setup_connected_state() -> void:
 	"""Setup UI when we're already connected (from main menu direct actions)"""
@@ -72,9 +76,10 @@ func _connect_signals() -> void:
 	disconnect_button.pressed.connect(_on_disconnect_pressed)
 	
 	# Class selection buttons
-	swordsman_button.pressed.connect(_on_swordsman_pressed)
-	archer_button.pressed.connect(_on_archer_pressed)
+	knight_button.pressed.connect(_on_knight_pressed)
+	ranger_button.pressed.connect(_on_ranger_pressed)
 	pyromancer_button.pressed.connect(_on_pyromancer_pressed)
+	assassin_button.pressed.connect(_on_assassin_pressed)
 	
 	# Start game button
 	start_game_button.pressed.connect(_on_start_game_pressed)
@@ -93,7 +98,8 @@ func _connect_signals() -> void:
 
 func _update_ui_state() -> void:
 	"""Update UI state based on network connection"""
-	var network_connected = NetworkManager and NetworkManager.connected
+	# If we're in the lobby, we should be connected (small delay to handle race conditions)
+	var network_connected = NetworkManager and (NetworkManager.connected or NetworkManager.multiplayer_peer != null)
 	var is_host = NetworkManager and NetworkManager.is_host
 	
 	# Network section - only show disconnect when connected
@@ -118,9 +124,10 @@ func _update_ui_state() -> void:
 func _update_class_levels() -> void:
 	"""Update class level displays from progression data"""
 	if not FileAccess.file_exists("user://progression_save.json"):
-		swordsman_level.text = "Lv. 1"
-		archer_level.text = "Lv. 1"
+		knight_level.text = "Lv. 1"
+		ranger_level.text = "Lv. 1"
 		pyromancer_level.text = "Lv. 1"
+		assassin_level.text = "Lv. 1"
 		return
 	
 	var file = FileAccess.open("user://progression_save.json", FileAccess.READ)
@@ -137,9 +144,10 @@ func _update_class_levels() -> void:
 		var data = json.data
 		if data.has("class_levels"):
 			var levels = data.class_levels
-			swordsman_level.text = "Lv. " + str(int(levels.get("Swordsman", 1)))
-			archer_level.text = "Lv. " + str(int(levels.get("Archer", 1)))
+			knight_level.text = "Lv. " + str(int(levels.get("Knight", 1)))
+			ranger_level.text = "Lv. " + str(int(levels.get("Ranger", 1)))
 			pyromancer_level.text = "Lv. " + str(int(levels.get("Pyromancer", 1)))
+			assassin_level.text = "Lv. " + str(int(levels.get("Assassin", 1)))
 
 func _select_class(selected_class: String) -> void:
 	"""Select a character class"""
@@ -236,17 +244,21 @@ func _on_start_game_pressed() -> void:
 	# Start the multiplayer game
 	NetworkManager.start_game()
 
-func _on_swordsman_pressed() -> void:
-	"""Handle swordsman class selection"""
-	_select_class("Swordsman")
+func _on_knight_pressed() -> void:
+	"""Handle knight class selection"""
+	_select_class("Knight")
 
-func _on_archer_pressed() -> void:
-	"""Handle archer class selection"""
-	_select_class("Archer")
+func _on_ranger_pressed() -> void:
+	"""Handle ranger class selection"""
+	_select_class("Ranger")
 
 func _on_pyromancer_pressed() -> void:
 	"""Handle pyromancer class selection"""
 	_select_class("Pyromancer")
+
+func _on_assassin_pressed() -> void:
+	"""Handle assassin class selection"""
+	_select_class("Assassin")
 
 # Network event handlers
 func _on_player_connected(_peer_id: int, player_info: NetworkManager.PlayerInfo) -> void:

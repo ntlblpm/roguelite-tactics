@@ -35,7 +35,7 @@ func _on_host_run_pressed() -> void:
 	## Handle HOST RUN button press - directly start hosting and go to lobby
 	
 	if NetworkManager.create_host("Host"):
-		get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
+		get_tree().change_scene_to_file("res://UIs/Lobby.tscn")
 	else:
 		# TODO: Show error dialog to user
 		pass
@@ -49,14 +49,14 @@ func _on_ip_confirmed(ip_address: String) -> void:
 	"""Handle IP confirmation from dialog - directly join the game"""
 	
 	if NetworkManager.join_host(ip_address, "Player"):
-		get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
+		get_tree().change_scene_to_file("res://UIs/Lobby.tscn")
 	else:
 		# TODO: Show error dialog to user
 		pass
 
 func _on_sanctum_pressed() -> void:
 	"""Handle SANCTUM button press - opens character progression and roster management"""
-	get_tree().change_scene_to_file("res://scenes/Sanctum.tscn")
+	get_tree().change_scene_to_file("res://UIs/Sanctum.tscn")
 
 func _on_exit_pressed() -> void:
 	"""Handle EXIT button press - quit the game"""

@@ -190,11 +190,9 @@ Pattern: `{Animation}{Direction}`
 
 ## Frame Size Reference
 
-| Character Type | Frame Size | Row Y Values |
+| Frame Size | Row Y Values |
 |---------------|------------|--------------|
-| Knight | 64x64 | 64, 192, 320, 448 |
-| Skeleton | 128x128 | 128, 384, 640, 896 |
-| Custom | WxH | H×1, H×3, H×5, H×7 |
+| 128x128 | 128, 384, 640, 896 |
 
 ## Performance Notes
 

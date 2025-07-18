@@ -261,13 +261,44 @@ func _on_ability_points_changed(current: int, maximum: int) -> void:
 	ability_points_changed.emit(current, maximum)
 
 func _play_animation(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
-	"""Play an animation with the appropriate directional suffix"""
+	"""Play an animation with the appropriate directional suffix, with fallback support"""
 	if not animated_sprite:
 		return
 	
-	var animation_name: String = base_name + GameConstants.get_direction_suffix(direction)
+	var direction_suffix = GameConstants.get_direction_suffix(direction)
+	var animation_name: String = base_name + direction_suffix
+	
+	# Try directional animation first
 	if animated_sprite.sprite_frames.has_animation(animation_name):
 		animated_sprite.play(animation_name)
+		return
+	
+	# Fallback: try "Takedamage" variant (inconsistent casing in scene files)
+	if base_name == "TakeDamage":
+		var alt_name = "Takedamage" + direction_suffix
+		if animated_sprite.sprite_frames.has_animation(alt_name):
+			animated_sprite.play(alt_name)
+			return
+	
+	# Fallback: try lowercase variant for other naming inconsistencies
+	var lowercase_name = base_name.to_lower() + direction_suffix
+	if animated_sprite.sprite_frames.has_animation(lowercase_name):
+		animated_sprite.play(lowercase_name)
+		return
+	
+	# Fallback: try non-directional animation (just the base name)
+	if animated_sprite.sprite_frames.has_animation(base_name):
+		animated_sprite.play(base_name)
+		return
+	
+	# Fallback: try lowercase base name
+	if animated_sprite.sprite_frames.has_animation(base_name.to_lower()):
+		animated_sprite.play(base_name.to_lower())
+		return
+	
+	# Debug: Log missing animation for development
+	if OS.is_debug_build():
+		print("Warning: Animation '%s' (and fallbacks) not found for %s" % [animation_name, character_type])
 
 @rpc("call_local", "any_peer", "reliable")
 func _play_animation_synchronized(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:

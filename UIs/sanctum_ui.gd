@@ -13,9 +13,10 @@ var progression_manager
 
 # Tab panels
 @onready var true_tab: Control = $MainContainer/TabContainer/True
-@onready var swordsman_tab: Control = $MainContainer/TabContainer/Swordsman
-@onready var archer_tab: Control = $MainContainer/TabContainer/Archer
+@onready var knight_tab: Control = $MainContainer/TabContainer/Knight
+@onready var ranger_tab: Control = $MainContainer/TabContainer/Ranger
 @onready var pyromancer_tab: Control = $MainContainer/TabContainer/Pyromancer
+@onready var assassin_tab: Control = $MainContainer/TabContainer/Assassin
 
 # Current selected tab
 var current_tab: String = "True"
@@ -50,8 +51,9 @@ func _connect_signals() -> void:
 func _setup_initial_display() -> void:
 	"""Setup the initial display for all tabs"""
 	_update_true_tab()
-	_update_class_tab("Swordsman")
-	_update_class_tab("Archer")
+	_update_class_tab("Knight")
+	_update_class_tab("Ranger")
+	_update_class_tab("Assassin")
 	_update_class_tab("Pyromancer")
 
 func _update_true_tab() -> void:
@@ -71,7 +73,7 @@ func _update_true_tab() -> void:
 	var class_summary: VBoxContainer = true_tab.get_node("VBoxContainer/ClassSummary")
 	for i in range(class_summary.get_child_count()):
 		var class_node: Control = class_summary.get_child(i)
-		if class_node.name in ["SwordsmanSummary", "ArcherSummary", "PyromancerSummary"]:
+		if class_node.name in ["KnightSummary", "RangerSummary", "PyromancerSummary", "AssassinSummary"]:
 			var character_class: String = class_node.name.replace("Summary", "")
 			_update_class_summary(class_node, character_class)
 	
@@ -227,13 +229,13 @@ func _on_upgrade_button_pressed(character_class: String, upgrade_id: String) -> 
 
 func _on_tab_changed(tab_index: int) -> void:
 	"""Handle tab change"""
-	var tab_names: Array[String] = ["True", "Swordsman", "Archer", "Pyromancer"]
+	var tab_names: Array[String] = ["True", "Knight", "Ranger", "Pyromancer", "Assassin"]
 	if tab_index < tab_names.size():
 		current_tab = tab_names[tab_index]
 
 func _on_back_button_pressed() -> void:
 	"""Handle back button press"""
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	get_tree().change_scene_to_file("res://UIs/MainMenu.tscn")
 
 func _on_experience_gained(character_class: String, amount: int) -> void:
 	"""Handle experience gained signal"""
@@ -262,11 +264,11 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_F5:
-				# Add test experience to Swordsman
-				progression_manager.add_experience("Swordsman", 200)
+				# Add test experience to Knight
+				progression_manager.add_experience("Knight", 200)
 			KEY_F6:
-				# Add test experience to Archer
-				progression_manager.add_experience("Archer", 150)
+				# Add test experience to Ranger
+				progression_manager.add_experience("Ranger", 150)
 			KEY_F7:
 				# Add test experience to Pyromancer
 				progression_manager.add_experience("Pyromancer", 180)

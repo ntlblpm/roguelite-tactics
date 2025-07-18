@@ -6,19 +6,22 @@ extends Node
 # Progression data structure
 var progression_data: Dictionary = {
 	"class_levels": {
-		"Swordsman": 1,
-		"Archer": 1,
-		"Pyromancer": 1
+		"Knight": 1,
+		"Ranger": 1,
+		"Pyromancer": 1,
+		"Assassin": 1
 	},
 	"class_experience": {
-		"Swordsman": 0,
-		"Archer": 0,
-		"Pyromancer": 0
+		"Knight": 0,
+		"Ranger": 0,
+		"Pyromancer": 0,
+		"Assassin": 0
 	},
 	"class_upgrades": {
-		"Swordsman": {},
-		"Archer": {},
-		"Pyromancer": {}
+		"Knight": {},
+		"Ranger": {},
+		"Pyromancer": {},
+		"Assassin": {}
 	},
 	"roster_upgrades": {},
 	"total_experience": 0
@@ -37,7 +40,7 @@ signal level_gained(character_class: String, new_level: int)
 signal upgrade_purchased(character_class: String, upgrade_id: String)
 
 # Class names array for easy iteration
-const CLASS_NAMES: Array[String] = ["Swordsman", "Archer", "Pyromancer"]
+const CLASS_NAMES: Array[String] = ["Knight", "Ranger", "Pyromancer", "Assassin"]
 
 func _ready() -> void:
 	load_progression_data()
@@ -199,7 +202,24 @@ func load_progression_data() -> void:
 	var loaded_data: Dictionary = json.data
 	
 	# Merge loaded data with default structure to handle version updates
+	_migrate_old_class_names(loaded_data)
 	_merge_progression_data(loaded_data)
+
+func _migrate_old_class_names(loaded_data: Dictionary) -> void:
+	"""Migrate old class names to new ones for backward compatibility"""
+	var old_to_new_mapping: Dictionary = {
+		"Swordsman": "Knight",
+		"Archer": "Ranger"
+	}
+	
+	for section in ["class_levels", "class_experience", "class_upgrades"]:
+		if section in loaded_data:
+			var section_data = loaded_data[section]
+			for old_name in old_to_new_mapping:
+				if old_name in section_data:
+					var new_name = old_to_new_mapping[old_name]
+					section_data[new_name] = section_data[old_name]
+					section_data.erase(old_name)
 
 func _merge_progression_data(loaded_data: Dictionary) -> void:
 	"""Merge loaded data with default structure to handle missing fields"""
@@ -215,19 +235,22 @@ func reset_progression() -> void:
 	"""Reset all progression data (for debugging/testing)"""
 	progression_data = {
 		"class_levels": {
-			"Swordsman": 1,
-			"Archer": 1,
-			"Pyromancer": 1
+			"Knight": 1,
+			"Ranger": 1,
+			"Pyromancer": 1,
+			"Assassin": 1
 		},
 		"class_experience": {
-			"Swordsman": 0,
-			"Archer": 0,
-			"Pyromancer": 0
+			"Knight": 0,
+			"Ranger": 0,
+			"Pyromancer": 0,
+			"Assassin": 0
 		},
 		"class_upgrades": {
-			"Swordsman": {},
-			"Archer": {},
-			"Pyromancer": {}
+			"Knight": {},
+			"Ranger": {},
+			"Pyromancer": {},
+			"Assassin": {}
 		},
 		"roster_upgrades": {},
 		"total_experience": 0

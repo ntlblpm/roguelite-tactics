@@ -82,11 +82,11 @@ layout_mode = 2
 [node name="ClassSummary" type="VBoxContainer" parent="MainContainer/TabContainer/True/VBoxContainer"]
 layout_mode = 2
 
-[node name="SwordsmanSummary" type="Control" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary"]
+[node name="KnightSummary" type="Control" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary"]
 custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/SwordsmanSummary"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/KnightSummary"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -94,21 +94,21 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/SwordsmanSummary/HBoxContainer"]
+[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/KnightSummary/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Swordsman Level: 1"
+text = "Knight Level: 1"
 
-[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/SwordsmanSummary/HBoxContainer"]
+[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/KnightSummary/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "XP: 0 (+100 to next)"
 
-[node name="ArcherSummary" type="Control" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary"]
+[node name="RangerSummary" type="Control" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary"]
 custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/ArcherSummary"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/RangerSummary"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -116,12 +116,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/ArcherSummary/HBoxContainer"]
+[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/RangerSummary/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Archer Level: 1"
+text = "Ranger Level: 1"
 
-[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/ArcherSummary/HBoxContainer"]
+[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/RangerSummary/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "XP: 0 (+100 to next)"
@@ -148,6 +148,22 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "XP: 0 (+100 to next)"
 
+[node name="AssassinSummary" type="Control" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/AssassinSummary"]
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/AssassinSummary/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Assassin Level: 1"
+
+[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/True/VBoxContainer/ClassSummary/AssassinSummary/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "XP: 0 (+100 to next)"
+
 [node name="HSeparator3" type="HSeparator" parent="MainContainer/TabContainer/True/VBoxContainer"]
 layout_mode = 2
 
@@ -163,12 +179,12 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Swordsman" type="Control" parent="MainContainer/TabContainer"]
+[node name="Knight" type="Control" parent="MainContainer/TabContainer"]
 visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Swordsman"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Knight"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -176,42 +192,42 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ClassInfo" type="VBoxContainer" parent="MainContainer/TabContainer/Swordsman/VBoxContainer"]
+[node name="ClassInfo" type="VBoxContainer" parent="MainContainer/TabContainer/Knight/VBoxContainer"]
 layout_mode = 2
 
-[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/Swordsman/VBoxContainer/ClassInfo"]
+[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/Knight/VBoxContainer/ClassInfo"]
 layout_mode = 2
-text = "Swordsman Level: 1"
+text = "Knight Level: 1"
 
-[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/Swordsman/VBoxContainer/ClassInfo"]
+[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/Knight/VBoxContainer/ClassInfo"]
 layout_mode = 2
 text = "Experience: 0 (+100 to next)"
 
-[node name="PointsLabel" type="Label" parent="MainContainer/TabContainer/Swordsman/VBoxContainer/ClassInfo"]
+[node name="PointsLabel" type="Label" parent="MainContainer/TabContainer/Knight/VBoxContainer/ClassInfo"]
 layout_mode = 2
 text = "Available Upgrade Points: 0"
 
-[node name="HSeparator" type="HSeparator" parent="MainContainer/TabContainer/Swordsman/VBoxContainer"]
+[node name="HSeparator" type="HSeparator" parent="MainContainer/TabContainer/Knight/VBoxContainer"]
 layout_mode = 2
 
-[node name="UpgradesTitle" type="Label" parent="MainContainer/TabContainer/Swordsman/VBoxContainer"]
+[node name="UpgradesTitle" type="Label" parent="MainContainer/TabContainer/Knight/VBoxContainer"]
 layout_mode = 2
-text = "Swordsman Upgrades"
+text = "Knight Upgrades"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainContainer/TabContainer/Swordsman/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainContainer/TabContainer/Knight/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="UpgradesContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Swordsman/VBoxContainer/ScrollContainer"]
+[node name="UpgradesContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Knight/VBoxContainer/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Archer" type="Control" parent="MainContainer/TabContainer"]
+[node name="Ranger" type="Control" parent="MainContainer/TabContainer"]
 visible = false
 layout_mode = 2
 metadata/_tab_index = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Archer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Ranger"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -219,33 +235,33 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ClassInfo" type="VBoxContainer" parent="MainContainer/TabContainer/Archer/VBoxContainer"]
+[node name="ClassInfo" type="VBoxContainer" parent="MainContainer/TabContainer/Ranger/VBoxContainer"]
 layout_mode = 2
 
-[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/Archer/VBoxContainer/ClassInfo"]
+[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/Ranger/VBoxContainer/ClassInfo"]
 layout_mode = 2
-text = "Archer Level: 1"
+text = "Ranger Level: 1"
 
-[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/Archer/VBoxContainer/ClassInfo"]
+[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/Ranger/VBoxContainer/ClassInfo"]
 layout_mode = 2
 text = "Experience: 0 (+100 to next)"
 
-[node name="PointsLabel" type="Label" parent="MainContainer/TabContainer/Archer/VBoxContainer/ClassInfo"]
+[node name="PointsLabel" type="Label" parent="MainContainer/TabContainer/Ranger/VBoxContainer/ClassInfo"]
 layout_mode = 2
 text = "Available Upgrade Points: 0"
 
-[node name="HSeparator" type="HSeparator" parent="MainContainer/TabContainer/Archer/VBoxContainer"]
+[node name="HSeparator" type="HSeparator" parent="MainContainer/TabContainer/Ranger/VBoxContainer"]
 layout_mode = 2
 
-[node name="UpgradesTitle" type="Label" parent="MainContainer/TabContainer/Archer/VBoxContainer"]
+[node name="UpgradesTitle" type="Label" parent="MainContainer/TabContainer/Ranger/VBoxContainer"]
 layout_mode = 2
-text = "Archer Upgrades"
+text = "Ranger Upgrades"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainContainer/TabContainer/Archer/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainContainer/TabContainer/Ranger/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="UpgradesContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Archer/VBoxContainer/ScrollContainer"]
+[node name="UpgradesContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Ranger/VBoxContainer/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -289,5 +305,51 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="UpgradesContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Pyromancer/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Assassin" type="Control" parent="MainContainer/TabContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Assassin"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ClassInfo" type="VBoxContainer" parent="MainContainer/TabContainer/Assassin/VBoxContainer"]
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="MainContainer/TabContainer/Assassin/VBoxContainer/ClassInfo"]
+layout_mode = 2
+text = "Assassin Level: 1"
+
+[node name="ExpLabel" type="Label" parent="MainContainer/TabContainer/Assassin/VBoxContainer/ClassInfo"]
+layout_mode = 2
+text = "XP: 0 (+100 to next)"
+
+[node name="PointsLabel" type="Label" parent="MainContainer/TabContainer/Assassin/VBoxContainer/ClassInfo"]
+layout_mode = 2
+text = "Upgrade Points: 0"
+
+[node name="HSeparator" type="HSeparator" parent="MainContainer/TabContainer/Assassin/VBoxContainer"]
+layout_mode = 2
+
+[node name="UpgradesTitle" type="Label" parent="MainContainer/TabContainer/Assassin/VBoxContainer"]
+layout_mode = 2
+text = "Assassin Upgrades"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainContainer/TabContainer/Assassin/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="UpgradesContainer" type="VBoxContainer" parent="MainContainer/TabContainer/Assassin/VBoxContainer/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3

@@ -5,12 +5,13 @@ extends Node2D
 ## Manages the integration between grid, turns, characters, networking, and UI
 
 # Scene references for all character classes
-@export var swordsman_scene: PackedScene = preload("res://players/swordsman/Swordsman.tscn")
-@export var archer_scene: PackedScene = preload("res://players/archer/Archer.tscn")
-@export var pyromancer_scene: PackedScene = preload("res://players/pyromancer/Pyromancer.tscn")
+@export var knight_scene: PackedScene = preload("res://players/Knight/Knight.tscn")
+@export var ranger_scene: PackedScene = preload("res://players/Ranger/Ranger.tscn")
+@export var pyromancer_scene: PackedScene = preload("res://players/Pyromancer/Pyromancer.tscn")
+@export var assassin_scene: PackedScene = preload("res://players/Assassin/Assassin.tscn")
 
 # Scene references for enemies
-@export var skeleton_scene: PackedScene = preload("res://enemies/skeleton/Skeleton.tscn")
+@export var skeleton_scene: PackedScene = preload("res://enemies/Skeleton/Skeleton.tscn")
 
 # System managers
 var grid_manager: GridManager
@@ -355,14 +356,16 @@ func _spawn_character(peer_id: int, character_class: String, grid_position: Vect
 	
 	# Select the appropriate scene based on class
 	match character_class:
-		"Swordsman":
-			character_scene = swordsman_scene
-		"Archer":
-			character_scene = archer_scene
+		"Knight":
+			character_scene = knight_scene
+		"Ranger":
+			character_scene = ranger_scene
 		"Pyromancer":
 			character_scene = pyromancer_scene
+		"Assassin":
+			character_scene = assassin_scene
 		_:
-			character_scene = swordsman_scene
+			character_scene = knight_scene
 	
 	# Instantiate the character
 	var character = character_scene.instantiate() as BaseCharacter
