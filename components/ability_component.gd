@@ -174,7 +174,7 @@ func use_ability(target_position: Vector2i) -> bool:
 	# Set cooldown
 	current_cooldown = cooldown
 	
-	# Execute ability sequence
+	# Execute ability sequence with host authority
 	await _execute_ability_sequence(target_position, targets)
 	
 	# Emit completion signal
@@ -183,16 +183,22 @@ func use_ability(target_position: Vector2i) -> bool:
 	return true
 
 func _execute_ability_sequence(target_position: Vector2i, targets: Array[BaseCharacter]) -> void:
-	"""Execute the full ability sequence: animation + damage timing in parallel"""
-	# Start animation immediately (non-blocking)
+	"""Execute ability sequence with proper network authority"""
+	# Start animation immediately (all clients)
 	_start_ability_animation(target_position)
 	
 	# Wait for damage timing
 	if take_damage_delay > 0:
 		await owner_character.get_tree().create_timer(take_damage_delay).timeout
 	
-	# Deal damage and trigger TakeDamage animations simultaneously
-	_deal_damage_to_targets(targets)
+	# Execute damage with host authority
+	if multiplayer.get_unique_id() == 1:  # Host only
+		# Convert targets to node paths for RPC serialization
+		var target_paths: Array[NodePath] = []
+		for target in targets:
+			if target and not target.is_dead:
+				target_paths.append(target.get_path())
+		_execute_damage_with_animation.rpc(target_paths, damage)
 	
 	# Play sound effect
 	_play_sound_effect()
@@ -211,53 +217,30 @@ func _start_ability_animation(target_position: Vector2i) -> void:
 	# Play animation with direction synchronized across all clients
 	owner_character._play_animation_synchronized.rpc(animation, direction_to_target)
 
-func _play_ability_animation(target_position: Vector2i) -> void:
-	"""Play the ability animation facing the target"""
-	if not owner_character.animated_sprite or animation.is_empty():
-		return
-	
-	ability_animation_started.emit()
-	
-	# Determine direction to face target
-	var direction_to_target = GameConstants.determine_movement_direction(owner_character.grid_position, target_position)
-	owner_character.current_facing_direction = direction_to_target
-	
-	# Play animation with direction synchronized across all clients
-	owner_character._play_animation_synchronized.rpc(animation, direction_to_target)
-	
-	# Wait for animation to complete
-	await _wait_for_animation_completion()
-	
-	# Return to idle after ability animation completes
-	if not owner_character.is_dead:
-		owner_character._play_animation_synchronized.rpc(GameConstants.IDLE_ANIMATION_PREFIX, direction_to_target)
 
-func _wait_for_animation_completion() -> void:
-	"""Wait for ability animation to finish with timeout"""
-	if not owner_character.animated_sprite or not owner_character.animated_sprite.is_playing():
-		return
-	
-	var timer = owner_character.get_tree().create_timer(2.0)
-	var animation_finished: bool = false
-	
-	var animation_connection = func(): animation_finished = true
-	owner_character.animated_sprite.animation_finished.connect(animation_connection, CONNECT_ONE_SHOT)
-	
-	while owner_character.animated_sprite.is_playing() and not timer.time_left <= 0:
-		await owner_character.get_tree().process_frame
-		if animation_finished:
-			break
-	
-	if owner_character.animated_sprite.animation_finished.is_connected(animation_connection):
-		owner_character.animated_sprite.animation_finished.disconnect(animation_connection)
-
-func _deal_damage_to_targets(targets: Array[BaseCharacter]) -> void:
-	"""Deal damage to all target characters"""
-	for target in targets:
+@rpc("authority", "call_local", "reliable")
+func _execute_damage_with_animation(target_paths: Array[NodePath], damage_amount: int) -> void:
+	"""Execute damage and animations atomically (host authority)"""
+	for target_path in target_paths:
+		var target = get_node(target_path) as BaseCharacter
 		if target and not target.is_dead:
-			target.take_damage(damage)
+			# Apply damage directly to resources
+			target.resources.take_damage(damage_amount)
+			
+			# Play damage animation synchronized across all clients
+			target._play_animation_synchronized.rpc(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
+			
+			# Handle death if needed
+			if target.resources.get_health_stats().current <= 0:
+				target._handle_death()
 	
-	ability_damage_dealt.emit(targets, damage)
+	# Emit signal with reconstructed targets array
+	var targets: Array[BaseCharacter] = []
+	for target_path in target_paths:
+		var target = get_node(target_path) as BaseCharacter
+		if target:
+			targets.append(target)
+	ability_damage_dealt.emit(targets, damage_amount)
 
 func _play_sound_effect() -> void:
 	"""Play the ability sound effect"""

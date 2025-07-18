@@ -937,7 +937,7 @@ func _debug_test_damage() -> void:
 	"""Debug function to test damage application"""
 	var current_character = get_current_player_character()
 	if current_character:
-		current_character.take_damage(10)
+		current_character.apply_direct_damage(10)
 
 func _debug_test_enemy_ai() -> void:
 	"""Debug function to test enemy AI"""

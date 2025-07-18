@@ -517,24 +517,26 @@ func set_grid_position(new_position: Vector2i) -> void:
 		# Register character position with grid manager
 		grid_manager.register_character_position(self, grid_position)
 
-func take_damage(damage: int) -> void:
-	"""Apply damage to the character"""
+func apply_direct_damage(damage: int) -> void:
+	"""Apply direct damage to character (host authority only) - for debug/special cases"""
+	# Only allow host to deal damage
+	if multiplayer.get_unique_id() != 1:
+		push_warning("apply_direct_damage() can only be called by host")
+		return
+		
+	# Apply damage to resources
 	resources.take_damage(damage)
 	
-	# Play TakeDamage animation synchronized across all clients
-	_play_damage_animation.rpc()
+	# Play damage animation synchronized across all clients
+	_play_animation_synchronized.rpc(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
 	
+	# Handle death if needed
 	if resources.get_health_stats().current <= 0:
 		_handle_death()
 
 func heal(amount: int) -> void:
 	"""Heal the character"""
 	resources.heal(amount)
-
-@rpc("any_peer", "call_local", "reliable")
-func _play_damage_animation() -> void:
-	"""Play TakeDamage animation on all clients"""
-	_play_animation(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
 
 
 func _handle_death() -> void:
