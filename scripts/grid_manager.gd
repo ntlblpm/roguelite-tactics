@@ -19,6 +19,8 @@ var current_hovered_tile: Vector2i = Vector2i(-999, -999)  # Track currently hov
 var current_path_highlights: Array[Vector2i] = []  # Track currently highlighted path
 var path_highlights_parent: Node2D = null  # Separate parent for path highlights
 var movement_source_position: Vector2i = Vector2i.ZERO  # Source position for current movement range
+var path_preview_type: String = "none"  # Type of preview: "path", "tiles", "none"
+var preview_base_color: Color = Color.WHITE  # Base color for preview highlights
 
 # Grid border visualization
 var grid_borders_parent: Node2D = null
@@ -129,6 +131,35 @@ func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharact
 	# - terrain 1 = "Non-pathable" or blocked terrain
 	return terrain == 0
 
+func _is_terrain_walkable(grid_position: Vector2i) -> bool:
+	"""Check if a grid position has walkable terrain (ignoring characters)"""
+	if not tilemap_layer:
+		return is_position_valid(grid_position)
+	
+	# Check if position is valid first
+	if not is_position_valid(grid_position):
+		return false
+	
+	# Get tile data at position
+	var tile_data: TileData = tilemap_layer.get_cell_tile_data(grid_position)
+	
+	# If no tile data, position is not walkable
+	if not tile_data:
+		return false
+	
+	# Check terrain type - terrain 0 is walkable, terrain 1 is blocked for all terrain sets
+	var terrain_set: int = tile_data.terrain_set
+	var terrain: int = tile_data.terrain
+	
+	# Ensure terrain set is valid (should be 0-4 based on tileset configuration)
+	if terrain_set < 0 or terrain_set > 4:
+		return false
+	
+	# For all terrain sets in the isometric tileset:
+	# - terrain 0 = "Pathable" or walkable terrain
+	# - terrain 1 = "Non-pathable" or blocked terrain
+	return terrain == 0
+
 func is_position_occupied_by_character(grid_position: Vector2i) -> bool:
 	"""Check if a grid position is occupied by a character"""
 	return occupied_positions.has(grid_position)
@@ -169,26 +200,64 @@ func get_valid_movement_positions(from_position: Vector2i, movement_range: int, 
 	var flood_fill_result = _flood_fill_pathfinding(from_position, movement_range, moving_character)
 	return flood_fill_result.reachable_positions
 
-func highlight_movement_range(from_position: Vector2i, movement_range: int, moving_character: BaseCharacter = null) -> void:
-	"""Visually highlight tiles within movement range"""
+func show_range_preview(origin: Vector2i, range: int, color: Color, include_entities_in_range: bool = true, preview_type: String = "none", moving_character: BaseCharacter = null) -> void:
+	"""Generic function to show range previews with customizable options
+	
+	Args:
+		origin: Center position for the range
+		range: Maximum distance from origin  
+		color: Color for the highlight tiles
+		include_entities_in_range: Whether to show preview for tiles with characters
+		preview_type: Type of preview - "path" (movement path), "tiles" (highlight hovered tile), "none"
+		moving_character: Character that is moving (for pathfinding validation)
+	"""
 	clear_movement_highlights()
 	
-	# Store the source position for path calculation
-	movement_source_position = from_position
+	# Store source position, preview type, and color
+	path_preview_type = preview_type
+	preview_base_color = color
+	if preview_type != "none":
+		movement_source_position = origin
 	
-	var valid_positions: Array[Vector2i] = get_valid_movement_positions(from_position, movement_range, moving_character)
+	# Get tiles within range - use pathfinding for movement, simple range for abilities
+	var valid_positions: Array[Vector2i] = []
 	
+	if preview_type == "path":
+		# For movement, use pathfinding to respect obstacles
+		valid_positions = get_valid_movement_positions(origin, range, moving_character)
+	else:
+		# For abilities, get all tiles within range that are walkable (but may have entities)
+		var all_tiles_in_range = get_tiles_within_range(origin, range)
+		for tile in all_tiles_in_range:
+			# Check if tile is walkable terrain (ignoring entities)
+			if _is_terrain_walkable(tile):
+				valid_positions.append(tile)
+	
+	# Filter out tiles with entities if requested
+	if not include_entities_in_range:
+		var filtered_positions: Array[Vector2i] = []
+		for pos in valid_positions:
+			if not occupied_positions.has(pos):
+				filtered_positions.append(pos)
+		valid_positions = filtered_positions
+	
+	# Create highlights for all valid tiles except the origin
 	for grid_pos in valid_positions:
-		_create_highlight_tile(grid_pos)
+		if grid_pos != origin:
+			_create_range_highlight_tile(grid_pos, color)
 	
-	movement_highlights = valid_positions
+	# Store highlighted positions for interaction (excluding origin)
+	movement_highlights.clear()
+	for pos in valid_positions:
+		if pos != origin:
+			movement_highlights.append(pos)
 
-func _create_highlight_tile(grid_position: Vector2i) -> void:
-	"""Create a visual highlight at a grid position"""
+func _create_range_highlight_tile(grid_position: Vector2i, color: Color) -> void:
+	"""Create a visual highlight at a grid position with specified color"""
 	var highlight: Polygon2D = Polygon2D.new()
 	
 	# Create diamond shape that matches isometric tile appearance
-	var half_width: float = tile_size.x * 0.45  # Full tile size for complete coverage
+	var half_width: float = tile_size.x * 0.45
 	var half_height: float = tile_size.y * 0.45
 	
 	# Define diamond vertices (clockwise from top)
@@ -200,14 +269,27 @@ func _create_highlight_tile(grid_position: Vector2i) -> void:
 	])
 	
 	highlight.polygon = diamond_points
-	highlight.color = Color(0, 0.9, 0, 0.3)  # Dimmed movement range tiles
+	highlight.color = color
 	highlight.position = grid_to_world(grid_position)
-	highlight.z_index = 1  # Render above tilemap but below characters
+	highlight.z_index = 1  # Render above tilemap but below path previews
 	
 	# Store grid position as metadata for easy access
 	highlight.set_meta("grid_position", grid_position)
 	
 	highlight_tiles_parent.add_child(highlight)
+
+func highlight_movement_range(from_position: Vector2i, movement_range: int, moving_character: BaseCharacter = null) -> void:
+	"""Visually highlight tiles within movement range"""
+	# Use the generic function with movement-specific settings
+	show_range_preview(
+		from_position, 
+		movement_range, 
+		Color(0, 0.9, 0, 0.3),  # Green for movement
+		false,  # Don't show preview for occupied tiles
+		"path",  # Show full path preview on hover
+		moving_character
+	)
+
 
 func _create_path_highlight_tile(grid_position: Vector2i, is_destination: bool = false) -> void:
 	"""Create a visual highlight for a path tile"""
@@ -227,14 +309,18 @@ func _create_path_highlight_tile(grid_position: Vector2i, is_destination: bool =
 	
 	highlight.polygon = diamond_points
 	
-	# Different colors for path vs destination
+	# Use the base color with different opacity levels
+	# Base range tiles have alpha around 0.3-0.5, so we scale up from there
+	var base_alpha = preview_base_color.a
 	if is_destination:
-		highlight.color = Color(0, 0.9, 0, 0.9)  # Bright green for destination
+		# Destination tile is brightest (3x base alpha, capped at 1.0)
+		highlight.color = Color(preview_base_color.r, preview_base_color.g, preview_base_color.b, min(base_alpha * 3.0, 1.0))
 	else:
-		highlight.color = Color(0, 0.9, 0, 0.6)  # More transparent green for path tiles
+		# Path tiles are medium brightness (2x base alpha, capped at 1.0)
+		highlight.color = Color(preview_base_color.r, preview_base_color.g, preview_base_color.b, min(base_alpha * 2.0, 1.0))
 	
 	highlight.position = grid_to_world(grid_position)
-	highlight.z_index = 2  # Render above movement highlights
+	highlight.z_index = 1  # Above range tiles but below characters (which are at z_index 2)
 	
 	path_highlights_parent.add_child(highlight)
 
@@ -256,6 +342,15 @@ func _update_path_preview(destination: Vector2i) -> void:
 	
 	current_path_highlights = path
 
+func _update_tile_preview(tile: Vector2i) -> void:
+	"""Update the preview to highlight a single tile (for abilities)"""
+	_clear_path_highlights()
+	
+	# Highlight just the hovered tile as destination
+	_create_path_highlight_tile(tile, true)
+	
+	current_path_highlights = [tile]
+
 func clear_movement_highlights() -> void:
 	"""Remove all movement highlight visuals"""
 	if highlight_tiles_parent:
@@ -263,6 +358,7 @@ func clear_movement_highlights() -> void:
 			child.queue_free()
 	movement_highlights.clear()
 	current_hovered_tile = Vector2i(-999, -999)  # Reset hovered tile
+	path_preview_type = "none"  # Reset preview type
 	_clear_path_highlights()  # Also clear path highlights
 
 func _input(event: InputEvent) -> void:
@@ -278,12 +374,15 @@ func _input(event: InputEvent) -> void:
 		if mouse_grid_pos != current_hovered_tile:
 			current_hovered_tile = mouse_grid_pos
 			
-			# Show path preview if this tile is in the movement range
-			if mouse_grid_pos in movement_highlights:
+			# Handle different preview types
+			if path_preview_type != "none" and mouse_grid_pos in movement_highlights:
 				tile_hovered.emit(mouse_grid_pos)
-				_update_path_preview(mouse_grid_pos)
-			else:
-				# Clear path preview if hovering outside movement range
+				if path_preview_type == "path":
+					_update_path_preview(mouse_grid_pos)
+				elif path_preview_type == "tiles":
+					_update_tile_preview(mouse_grid_pos)
+			elif path_preview_type != "none":
+				# Clear preview if hovering outside range
 				_clear_path_highlights()
 	
 	# Debug keyboard shortcuts for testing pathfinding

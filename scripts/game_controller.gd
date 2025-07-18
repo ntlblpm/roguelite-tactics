@@ -734,13 +734,16 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 	
 	# Check if we're in ability targeting mode
 	if ability_targeting_mode and selected_ability:
+		# Store ability name before await in case selected_ability becomes null
+		var ability_name = selected_ability.ability_name
+		
 		# Attempt to use the ability
 		var ability_successful = await selected_ability.use_ability(grid_position)
 		
 		if ability_successful:
 			if chat_panel:
 				var player_name = _get_player_name_for_character(current_turn_character)
-				chat_panel.add_combat_message("%s used %s!" % [player_name, selected_ability.ability_name])
+				chat_panel.add_combat_message("%s used %s!" % [player_name, ability_name])
 			
 			# Update UI after ability use
 			_update_ability_bar(current_turn_character)
@@ -752,7 +755,7 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 				ap_text.text = "%d/%d" % [current_turn_character.resources.current_ability_points, current_turn_character.resources.max_ability_points]
 		else:
 			if chat_panel:
-				chat_panel.add_system_message("Invalid target for " + selected_ability.ability_name)
+				chat_panel.add_system_message("Invalid target for " + ability_name)
 		
 		# Exit ability targeting mode
 		ability_targeting_mode = false
@@ -1193,9 +1196,12 @@ func _show_ability_range(character: BaseCharacter, ability: AbilityComponent) ->
 	if not grid_manager:
 		return
 		
-	# Get all tiles within ability range
-	var tiles_in_range: Array[Vector2i] = grid_manager.get_tiles_within_range(character.grid_position, ability.range)
-	
-	# Highlight them in blue (we'll need to add a method to grid_manager for this)
-	for tile in tiles_in_range:
-		grid_manager.highlight_tile(tile, Color(0.2, 0.5, 1.0, 0.5))  # Blue color 
+	# Use the generic show_range_preview function for ability ranges
+	grid_manager.show_range_preview(
+		character.grid_position,
+		ability.range,
+		Color(0.2, 0.5, 1.0, 0.5),  # Blue color for abilities
+		true,  # Include entities (abilities target characters)
+		"tiles",  # Highlight target tile on hover
+		null  # No moving character for ability targeting
+	) 
