@@ -614,10 +614,15 @@ func _on_animation_finished() -> void:
 	
 	var finished_animation: String = animated_sprite.animation
 	
-	# Handle damage animation completion - return to idle
-	if finished_animation.begins_with(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX) and not is_dead:
-		_play_animation(GameConstants.IDLE_ANIMATION_PREFIX)
+	# Don't return to idle if character is dead
+	if is_dead:
+		return
 	
-	# For death animations, we want to stay on the final frame, so do nothing
-	# The animation will automatically stop on the last frame since loop is false
-	# NOTE: Ability animations are now handled by AbilityComponent itself 
+	# For death animations, we want to stay on the final frame
+	if finished_animation.begins_with(GameConstants.DIE_ANIMATION_PREFIX):
+		return
+	
+	# Return to idle after any non-looping animation finishes
+	# This includes: Attack, Special, Taunt, TakeDamage, etc.
+	# The animated sprite will stop on these animations since they have loop = false
+	_play_animation(GameConstants.IDLE_ANIMATION_PREFIX) 

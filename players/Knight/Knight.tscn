@@ -7237,7 +7237,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_crouchidle_bl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"CrouchidleBottomLeft",
 "speed": 15.0
 }, {
@@ -7287,7 +7287,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_crouchidle_br_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"CrouchidleBottomRight",
 "speed": 15.0
 }, {
@@ -7337,7 +7337,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_crouchidle_tl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"CrouchidleTopLeft",
 "speed": 15.0
 }, {
@@ -7387,7 +7387,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_crouchidle_tr_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"CrouchidleTopRight",
 "speed": 15.0
 }, {
@@ -7837,7 +7837,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle2_bl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle2BottomLeft",
 "speed": 15.0
 }, {
@@ -7887,7 +7887,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle2_br_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle2BottomRight",
 "speed": 15.0
 }, {
@@ -7937,7 +7937,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle2_tl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle2TopLeft",
 "speed": 15.0
 }, {
@@ -7987,7 +7987,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle2_tr_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle2TopRight",
 "speed": 15.0
 }, {
@@ -8037,7 +8037,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle3_bl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle3BottomLeft",
 "speed": 15.0
 }, {
@@ -8087,7 +8087,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle3_br_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle3BottomRight",
 "speed": 15.0
 }, {
@@ -8137,7 +8137,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle3_tl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle3TopLeft",
 "speed": 15.0
 }, {
@@ -8187,7 +8187,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle3_tr_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle3TopRight",
 "speed": 15.0
 }, {
@@ -8237,7 +8237,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle4_bl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle4BottomLeft",
 "speed": 15.0
 }, {
@@ -8287,7 +8287,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle4_br_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle4BottomRight",
 "speed": 15.0
 }, {
@@ -8337,7 +8337,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle4_tl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle4TopLeft",
 "speed": 15.0
 }, {
@@ -8387,7 +8387,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle4_tr_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"Idle4TopRight",
 "speed": 15.0
 }, {
@@ -8437,7 +8437,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle_bl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"IdleBottomLeft",
 "speed": 15.0
 }, {
@@ -8487,7 +8487,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle_br_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"IdleBottomRight",
 "speed": 15.0
 }, {
@@ -8537,7 +8537,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle_tl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"IdleTopLeft",
 "speed": 15.0
 }, {
@@ -8587,7 +8587,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_idle_tr_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"IdleTopRight",
 "speed": 15.0
 }, {
@@ -8637,7 +8637,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_rideidle_bl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"RideidleBottomLeft",
 "speed": 15.0
 }, {
@@ -8687,7 +8687,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_rideidle_br_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"RideidleBottomRight",
 "speed": 15.0
 }, {
@@ -8737,7 +8737,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_rideidle_tl_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"RideidleTopLeft",
 "speed": 15.0
 }, {
@@ -8787,7 +8787,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_rideidle_tr_14")
 }],
-"loop": false,
+"loop": true,
 "name": &"RideidleTopRight",
 "speed": 15.0
 }, {
@@ -10630,10 +10630,30 @@ script = ExtResource("26_2v4ca")
 max_health_points = 70
 metadata/_custom_type_script = "uid://crjhgbtgiao3l"
 
-[node name="AbilityComponent" type="Node" parent="."]
+[node name="A1_Strike" type="Node" parent="."]
 script = ExtResource("28_g8qln")
 ability_name = "Strike"
 description = "Strike with sword"
-ap_cost = 4
 take_damage_delay = 0.2
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="A2_Swing" type="Node" parent="."]
+script = ExtResource("28_g8qln")
+ability_name = "Swing"
+description = "Frontal area swing"
+damage = 20
+ap_cost = 6
+take_damage_delay = 0.4
+animation = "Attack2"
+cooldown = 1
+metadata/_custom_type_script = "uid://bh56fgehx2jk"
+
+[node name="A2_Overhead Strike" type="Node" parent="."]
+script = ExtResource("28_g8qln")
+ability_name = "Overhead Strike"
+description = "Strong single-target overhead strike"
+damage = 25
+ap_cost = 5
+take_damage_delay = 0.3
+animation = "Attack4"
 metadata/_custom_type_script = "uid://bh56fgehx2jk"
