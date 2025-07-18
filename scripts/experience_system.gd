@@ -10,7 +10,7 @@ const ELITE_ENEMY_EXPERIENCE: int = 50
 const BOSS_ENEMY_EXPERIENCE: int = 100  # Bosses give double the normal fight experience
 
 # Class that participated in the fight (determined by player's selected class)
-var participating_class: String = "Swordsman"  # Default, can be set before combat
+var participating_class: String = "Knight"  # Default, can be set before combat
 
 # Reference to progression manager (will be set when needed)
 var progression_manager = null

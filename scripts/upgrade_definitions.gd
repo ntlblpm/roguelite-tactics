@@ -10,14 +10,77 @@ extends RefCounted
 static func get_class_upgrades(character_class: String) -> Array[Dictionary]:
 	"""Get all available upgrades for a specific class"""
 	match character_class:
-		"Swordsman":
-			return _get_swordsman_upgrades()
-		"Archer":
-			return _get_archer_upgrades()
+		"Knight":
+			return _get_knight_upgrades()
+		"Ranger":
+			return _get_ranger_upgrades()
+		"Assassin":
+			return _get_assassin_upgrades()
 		"Pyromancer":
 			return _get_pyromancer_upgrades()
 		_:
 			return []
+
+static func _get_assassin_upgrades() -> Array[Dictionary]:
+	"""Define Assassin-specific upgrades"""
+	return [
+		{
+			"id": "stealth_mastery",
+			"name": "Stealth Mastery",
+			"description": "Increases stealth effectiveness and critical damage from stealth",
+			"max_level": 15,
+			"stat_bonus_per_level": {"stealth_damage": 6}
+		},
+		{
+			"id": "dual_wield",
+			"name": "Dual Wield",
+			"description": "Increases attack speed and damage with dual weapons",
+			"max_level": 10,
+			"stat_bonus_per_level": {"weapon_damage": 3, "attack_speed": 5}
+		},
+		{
+			"id": "shadow_step",
+			"name": "Shadow Step",
+			"description": "Increases movement points and dodge chance",
+			"max_level": 8,
+			"stat_bonus_per_level": {"max_movement_points": 1, "dodge_chance": 8}
+		},
+		{
+			"id": "poison_blade",
+			"name": "Poison Blade",
+			"description": "Adds poison damage over time to attacks",
+			"max_level": 12,
+			"stat_bonus_per_level": {"poison_damage": 4, "poison_duration": 1}
+		},
+		{
+			"id": "backstab",
+			"name": "Backstab",
+			"description": "Increases critical chance and damage when attacking from behind",
+			"max_level": 6,
+			"stat_bonus_per_level": {"backstab_chance": 10, "backstab_damage": 12}
+		},
+		{
+			"id": "evasion_expert",
+			"name": "Evasion Expert",
+			"description": "Increases dodge chance and counter-attack damage",
+			"max_level": 12,
+			"stat_bonus_per_level": {"dodge_chance": 6, "counter_damage": 8}
+		},
+		{
+			"id": "lethal_precision",
+			"name": "Lethal Precision",
+			"description": "Increases critical hit chance and accuracy",
+			"max_level": 10,
+			"stat_bonus_per_level": {"critical_chance": 5, "accuracy": 6}
+		},
+		{
+			"id": "shadow_resistance",
+			"name": "Shadow Resistance",
+			"description": "Increases health and resistance to debuffs",
+			"max_level": 8,
+			"stat_bonus_per_level": {"max_health_points": 4, "debuff_resistance": 10}
+		}
+	]
 
 static func get_roster_upgrades() -> Array[Dictionary]:
 	"""Get all available roster upgrades"""
@@ -66,8 +129,8 @@ static func get_roster_upgrades() -> Array[Dictionary]:
 		}
 	]
 
-static func _get_swordsman_upgrades() -> Array[Dictionary]:
-	"""Define Swordsman-specific upgrades"""
+static func _get_knight_upgrades() -> Array[Dictionary]:
+	"""Define Knight-specific upgrades"""
 	return [
 		{
 			"id": "sword_mastery",
@@ -127,8 +190,8 @@ static func _get_swordsman_upgrades() -> Array[Dictionary]:
 		}
 	]
 
-static func _get_archer_upgrades() -> Array[Dictionary]:
-	"""Define Archer-specific upgrades"""
+static func _get_ranger_upgrades() -> Array[Dictionary]:
+	"""Define Ranger-specific upgrades"""
 	return [
 		{
 			"id": "bow_mastery",

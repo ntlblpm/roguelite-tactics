@@ -259,7 +259,7 @@ func _player_info_to_dict(player_info: PlayerInfo) -> Dictionary:
 func _dict_to_player_info(peer_id: int, data: Dictionary) -> PlayerInfo:
 	## Convert dictionary back to PlayerInfo
 	var player_info = PlayerInfo.new(peer_id, data.get("player_name", "Unknown"))
-	player_info.selected_class = data.get("selected_class", "Swordsman")
-	player_info.class_levels = data.get("class_levels", {"Swordsman": 1, "Archer": 1, "Pyromancer": 1})
+	player_info.selected_class = data.get("selected_class", "Knight")
+	player_info.class_levels = data.get("class_levels", {"Knight": 1, "Ranger": 1, "Pyromancer": 1, "Assassin": 1})
 	player_info.is_ready = data.get("is_ready", false)
 	return player_info 

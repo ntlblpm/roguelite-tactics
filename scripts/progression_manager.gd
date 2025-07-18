@@ -202,24 +202,8 @@ func load_progression_data() -> void:
 	var loaded_data: Dictionary = json.data
 	
 	# Merge loaded data with default structure to handle version updates
-	_migrate_old_class_names(loaded_data)
 	_merge_progression_data(loaded_data)
 
-func _migrate_old_class_names(loaded_data: Dictionary) -> void:
-	"""Migrate old class names to new ones for backward compatibility"""
-	var old_to_new_mapping: Dictionary = {
-		"Swordsman": "Knight",
-		"Archer": "Ranger"
-	}
-	
-	for section in ["class_levels", "class_experience", "class_upgrades"]:
-		if section in loaded_data:
-			var section_data = loaded_data[section]
-			for old_name in old_to_new_mapping:
-				if old_name in section_data:
-					var new_name = old_to_new_mapping[old_name]
-					section_data[new_name] = section_data[old_name]
-					section_data.erase(old_name)
 
 func _merge_progression_data(loaded_data: Dictionary) -> void:
 	"""Merge loaded data with default structure to handle missing fields"""
