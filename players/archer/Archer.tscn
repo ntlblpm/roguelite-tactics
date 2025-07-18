@@ -1,4 +1,4 @@
-[gd_scene load_steps=1104 format=3 uid="uid://dhw4sx2qkwpgq"]
+[gd_scene load_steps=1105 format=3 uid="uid://dhw4sx2qkwpgq"]
 
 [ext_resource type="Texture2D" uid="uid://w8ia7k741ch7" path="res://assets/entities/archer/Attack1.png" id="1_1mvjd"]
 [ext_resource type="Script" uid="uid://b7adslhp2f43b" path="res://players/archer/archer.gd" id="1_script"]
@@ -17,6 +17,7 @@
 [ext_resource type="Texture2D" uid="uid://qi2g7xvd6685" path="res://assets/entities/archer/Run.png" id="17_h23zt"]
 [ext_resource type="Texture2D" uid="uid://p1d54g3ouisd" path="res://assets/entities/archer/RunBackwards.png" id="18_runback"]
 [ext_resource type="Texture2D" uid="uid://4jqqg4oes7ry" path="res://assets/entities/archer/Special1.png" id="19_j451v"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="21_jdskl"]
 [ext_resource type="Texture2D" uid="uid://bo1tlnbi6p0kq" path="res://assets/entities/archer/TakeDamage.png" id="22_m784y"]
 [ext_resource type="Texture2D" uid="uid://csu5y7fnuk817" path="res://assets/entities/archer/Taunt.png" id="23_n895z"]
 [ext_resource type="Texture2D" uid="uid://d3hvttqnk76yg" path="res://assets/entities/archer/Walk.png" id="24_oa60"]
@@ -7976,3 +7977,8 @@ shape = SubResource("CircleShape2D_yjrmp")
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
 occluder = SubResource("OccluderPolygon2D_jdskl")
+
+[node name="CombatantResourcesComponent" type="Node" parent="."]
+script = ExtResource("21_jdskl")
+max_health_points = 80
+metadata/_custom_type_script = "uid://crjhgbtgiao3l"

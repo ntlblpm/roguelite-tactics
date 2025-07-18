@@ -59,7 +59,7 @@ func can_use_ability(target_position: Vector2i) -> bool:
 		return false
 	
 	# Check AP cost
-	if owner_character.current_ability_points < ap_cost:
+	if owner_character.resources.get_ability_points() < ap_cost:
 		return false
 	
 	# Check range
@@ -169,9 +169,7 @@ func use_ability(target_position: Vector2i) -> bool:
 		return false
 	
 	# Consume AP
-	owner_character.current_ability_points -= ap_cost
-	if owner_character.has_method("_sync_ability_points"):
-		owner_character._sync_ability_points.rpc(owner_character.current_ability_points)
+	owner_character.resources.consume_ability_points(ap_cost)
 	
 	# Set cooldown
 	current_cooldown = cooldown
@@ -229,6 +227,10 @@ func _play_ability_animation(target_position: Vector2i) -> void:
 	
 	# Wait for animation to complete
 	await _wait_for_animation_completion()
+	
+	# Return to idle after ability animation completes
+	if not owner_character.is_dead:
+		owner_character._play_animation_synchronized.rpc(GameConstants.IDLE_ANIMATION_PREFIX, direction_to_target)
 
 func _wait_for_animation_completion() -> void:
 	"""Wait for ability animation to finish with timeout"""

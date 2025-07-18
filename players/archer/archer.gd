@@ -8,5 +8,4 @@ func _ready() -> void:
 	character_type = "Archer"
 	# Archers are quick and agile - higher initiative
 	base_initiative = 14
-	current_initiative = base_initiative
 	super()

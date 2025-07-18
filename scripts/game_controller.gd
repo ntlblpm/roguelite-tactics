@@ -210,7 +210,7 @@ func _wait_for_all_characters_spawned(expected_count: int) -> void:
 				var character_authority = character.get_multiplayer_authority()
 				if character_authority > 0 and character_authority == peer_id:
 					# Ensure character is properly initialized with stats
-					if character.max_health_points > 0 and character.character_type != "":
+					if character.resources and character.resources.max_health_points > 0 and character.character_type != "":
 						valid_character_count += 1
 		
 		if valid_character_count >= expected_count:
@@ -563,11 +563,11 @@ func _sync_turn_state() -> void:
 		# Update stat displays if it's the local player's turn
 		if turn_manager.is_local_player_turn():
 			if hp_text:
-				hp_text.text = "%d/%d" % [current_character.current_health_points, current_character.max_health_points]
+				hp_text.text = "%d/%d" % [current_character.resources.current_health_points, current_character.resources.max_health_points]
 			if mp_text:
-				mp_text.text = "%d/%d" % [current_character.current_movement_points, current_character.max_movement_points]
+				mp_text.text = "%d/%d" % [current_character.resources.current_movement_points, current_character.resources.max_movement_points]
 			if ap_text:
-				ap_text.text = "%d/%d" % [current_character.current_ability_points, current_character.max_ability_points]
+				ap_text.text = "%d/%d" % [current_character.resources.current_ability_points, current_character.resources.max_ability_points]
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Update HP display when character health changes"""
@@ -634,7 +634,7 @@ func _on_character_selected() -> void:
 				return  # Don't show movement highlights for AI characters
 			
 			# Show movement range when selected
-			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points, current_turn_character)
+			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
 			
 			if chat_panel:
 				chat_panel.add_system_message(current_turn_character.character_type + " selected - Movement range highlighted")
@@ -690,7 +690,7 @@ func _on_movement_completed(new_position: Vector2i) -> void:
 				return  # Don't update movement highlights for AI characters
 			
 			# Immediately update movement range from the new position
-			grid_manager.highlight_movement_range(new_position, current_turn_character.current_movement_points, current_turn_character)
+			grid_manager.highlight_movement_range(new_position, current_turn_character.resources.get_movement_points(), current_turn_character)
 			if chat_panel:
 				chat_panel.add_system_message("Movement range updated from new position: " + str(new_position))
 
@@ -714,15 +714,15 @@ func _on_turn_started(_character: BaseCharacter) -> void:
 			# It's a real player turn - update UI normally
 			# Manually update the stat displays to show the current character's stats
 			if hp_text:
-				hp_text.text = "%d/%d" % [current_turn_character.current_health_points, current_turn_character.max_health_points]
+				hp_text.text = "%d/%d" % [current_turn_character.resources.current_health_points, current_turn_character.resources.max_health_points]
 			if mp_text:
-				mp_text.text = "%d/%d" % [current_turn_character.current_movement_points, current_turn_character.max_movement_points]
+				mp_text.text = "%d/%d" % [current_turn_character.resources.current_movement_points, current_turn_character.resources.max_movement_points]
 			if ap_text:
-				ap_text.text = "%d/%d" % [current_turn_character.current_ability_points, current_turn_character.max_ability_points]
+				ap_text.text = "%d/%d" % [current_turn_character.resources.current_ability_points, current_turn_character.resources.max_ability_points]
 			
 			# Show movement range for the current character
-			if grid_manager and current_turn_character.current_movement_points > 0:
-				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.current_movement_points, current_turn_character)
+			if grid_manager and current_turn_character.resources.get_movement_points() > 0:
+				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
 	else:
 		# If it's not the local player's turn, clear movement highlights
 		if grid_manager:
@@ -826,7 +826,7 @@ func _update_current_entity_display(character: BaseCharacter) -> void:
 		current_entity_name.text = player_name + " (" + character.character_type + ")"
 	
 	if current_entity_hp:
-		current_entity_hp.text = "HP: %d/%d" % [character.current_health_points, character.max_health_points]
+		current_entity_hp.text = "HP: %d/%d" % [character.resources.current_health_points, character.resources.max_health_points]
 	
 	if current_entity_status:
 		# Check if it's the local player's turn
@@ -859,7 +859,7 @@ func _create_character_turn_display(character: BaseCharacter, turn_index: int, c
 	container.add_child(name_label)
 	
 	var hp_label = Label.new()
-	hp_label.text = "HP: %d/%d" % [character.current_health_points, character.max_health_points]
+	hp_label.text = "HP: %d/%d" % [character.resources.current_health_points, character.resources.max_health_points]
 	hp_label.add_theme_font_size_override("font_size", 8)
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	container.add_child(hp_label)

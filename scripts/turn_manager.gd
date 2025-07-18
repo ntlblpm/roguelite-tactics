@@ -334,7 +334,7 @@ func get_turn_order_display() -> String:
 	for i in range(characters.size()):
 		var character = characters[i]
 		var player_name = _get_player_name_for_character(character)
-		var hp_display = "%d/%d HP" % [character.current_health_points, character.max_health_points]
+		var hp_display = "%d/%d HP" % [character.resources.current_health_points, character.resources.max_health_points]
 		
 		var entry = "%s (%s) - %s" % [player_name, character.character_type, hp_display]
 		

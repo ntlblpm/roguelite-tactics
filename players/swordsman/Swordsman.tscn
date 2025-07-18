@@ -1,4 +1,4 @@
-[gd_scene load_steps=983 format=3 uid="uid://c7wbq8q87afjh"]
+[gd_scene load_steps=984 format=3 uid="uid://c7wbq8q87afjh"]
 
 [ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://resources/shadow.tres" id="1_hh7om"]
 [ext_resource type="Script" uid="uid://cog1150uopnhu" path="res://players/swordsman/swordsman.gd" id="1_script"]
@@ -19,6 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://dedsgpijgrh4b" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Melee.png" id="15_uxbvd"]
 [ext_resource type="Texture2D" uid="uid://dw7fygog0b2d4" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/TakeDamage.png" id="16_cppip"]
 [ext_resource type="Texture2D" uid="uid://shilch4yqxe1" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Special2.png" id="17_yih5e"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="20_g0nrk"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tuuxc"]
 atlas = ExtResource("2_1fiuy")
@@ -7093,3 +7094,7 @@ shape = SubResource("CircleShape2D_yaweo")
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
 occluder = SubResource("OccluderPolygon2D_8enwv")
+
+[node name="CombatantResourcesComponent" type="Node" parent="."]
+script = ExtResource("20_g0nrk")
+metadata/_custom_type_script = "uid://crjhgbtgiao3l"

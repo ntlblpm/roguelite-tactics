@@ -4,7 +4,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Communication Guidelines
 
-- Always let me know what my second best suggestion would have been
 - Do what has been asked; nothing more, nothing less
 - NEVER create files unless absolutely necessary
 - ALWAYS prefer editing existing files over creating new ones
@@ -20,33 +19,39 @@ This is a multiplayer isometric tactical RPG built in Godot 4.4 featuring peer-t
 ### Core Systems
 
 #### Game Controller (`scripts/game_controller.gd`)
+
 - Central coordinator managing all game systems (1008 lines)
 - Handles character spawning, multiplayer synchronization, UI coordination
 - Host spawns all entities, clients receive state updates
 - Entry point for most game logic
 
 #### Turn Management (`scripts/turn_manager.gd`)
+
 - Initiative-based turn order system with host authority
 - Manages MP/AP refresh, turn transitions, AI integration
 - Critical for multiplayer synchronization
 
 #### Character System (`scripts/base_character.gd`)
+
 - Base class for all characters (players + enemies) - 435 lines
 - Grid-based movement with pathfinding and animation
 - RPC-based movement synchronization
 - Core stats: HP, MP (movement points), AP (ability points), Initiative
 
 #### Grid System (`scripts/grid_manager.gd`)
+
 - Diamond-shaped battlefield (20x20) with isometric coordinates
 - Flood-fill pathfinding algorithm for movement validation
 - Visual feedback for movement ranges and path previews
 
 #### Networking (`scripts/network_manager.gd`)
+
 - Peer-to-peer ENet backend with host authority
 - PlayerInfo synchronization across clients
 - Autoload singleton for global network state
 
 #### Progression System (`scripts/progression_manager.gd`)
+
 - Persistent character advancement with JSON save files
 - Class levels, roster levels, upgrade trees
 - Experience system with exponential scaling
@@ -67,11 +72,13 @@ This is a multiplayer isometric tactical RPG built in Godot 4.4 featuring peer-t
 ### Character Classes
 
 Available player classes:
+
 - **SwordsmanCharacter**: Melee fighter with close combat abilities
 - **ArcherCharacter**: Ranged attacker with bow skills
 - **PyromancerCharacter**: Magic user with fire spells
 
 Enemy types:
+
 - **SkeletonEnemy**: Basic AI enemy with pathfinding and attack behavior
 
 ### AI System
@@ -83,6 +90,7 @@ Enemy types:
 ## Development Workflow
 
 ### Running the Game
+
 - Open project in Godot 4.4
 - Run MainMenu scene to start
 - Host creates game, clients join via IP
@@ -91,17 +99,20 @@ Enemy types:
 ### Key Development Patterns
 
 #### Multiplayer Considerations
+
 - Always check `is_multiplayer_authority()` before state changes
 - Use `@rpc("call_local", "any_peer", "reliable")` for synchronized actions
 - Host handles spawning, clients receive spawn commands
 - Turn management must be host-authoritative
 
 #### Turn-Based Logic
+
 - Check `turn_manager.is_local_player_turn()` before allowing player actions
 - Verify `turn_manager.is_character_turn_active()` for turn state
 - Use `current_turn_character.is_ai_controlled()` to distinguish AI vs player turns
 
 #### Grid Movement
+
 - Convert between world coordinates and grid positions via `grid_manager`
 - Use `highlight_movement_range()` for visual feedback
 - Validate movement with pathfinding before executing
@@ -109,6 +120,7 @@ Enemy types:
 ### Architecture Considerations
 
 #### Current Technical Debt
+
 - **Monolithic classes**: BaseCharacter (435 lines), GameController (1008 lines)
 - **Tight coupling**: Direct references between systems
 - **Mixed concerns**: UI logic mixed with game logic in GameController
@@ -123,8 +135,8 @@ Enemy types:
 - Prefer composition over inheritance where possible
 - Use signals for loose coupling between nodes
 - Follow Godot's node naming conventions (PascalCase for nodes, snake_case for methods)
-- Aim to have things set up in the editor where possible instead of writing script code to 
-	apply the changes at runtime. Provide instructions when things need to be set up in the editor.
+- Aim to have things set up in the editor where possible instead of writing script code to
+ apply the changes at runtime. Provide instructions when things need to be set up in the editor.
 
 ### Code Style
 
@@ -197,12 +209,14 @@ Enemy types:
 ## Common Development Tasks
 
 When working on character behavior:
+
 1. Check if changes affect multiplayer synchronization
 2. Verify turn-based logic with AI vs player character handling
 3. Test movement validation and grid positioning
 4. Ensure proper cleanup in _exit_tree()
 
 When adding new features:
+
 1. Consider host/client authority model
 2. Use existing signal patterns for communication
 3. Follow existing RPC patterns for multiplayer sync
@@ -218,6 +232,7 @@ When adding new features:
 ## Recent Changes
 
 The codebase shows active development with recent improvements to:
+
 - Skeleton enemy turn behavior
 - Action/ability points system
 - Turn manager AI integration

@@ -5,15 +5,11 @@ extends CharacterBody2D
 ## Manages HP, MP, AP resources and handles turn-based combat mechanics
 
 # Combat stats
-@export var max_health_points: int = GameConstants.DEFAULT_HEALTH_POINTS
-@export var max_movement_points: int = GameConstants.DEFAULT_MOVEMENT_POINTS
-@export var max_ability_points: int = GameConstants.DEFAULT_ABILITY_POINTS
 @export var base_initiative: int = GameConstants.DEFAULT_INITIATIVE
-
-var current_health_points: int = GameConstants.DEFAULT_HEALTH_POINTS
-var current_movement_points: int = GameConstants.DEFAULT_MOVEMENT_POINTS
-var current_ability_points: int = GameConstants.DEFAULT_ABILITY_POINTS
 var current_initiative: int = GameConstants.DEFAULT_INITIATIVE
+
+# Combatant resources component
+@onready var resources: CombatantResourcesComponent = $CombatantResourcesComponent
 
 # Grid position
 var grid_position: Vector2i = Vector2i.ZERO
@@ -31,12 +27,11 @@ var is_dead: bool = false
 # Direction tracking for animations
 var current_facing_direction: GameConstants.Direction = GameConstants.Direction.BOTTOM_RIGHT
 
-# Signals for UI updates
+# Signals for UI updates (forwarded from resources component)
 signal health_changed(current: int, maximum: int)
 signal movement_points_changed(current: int, maximum: int)
 signal ability_points_changed(current: int, maximum: int)
 signal turn_ended()
-@warning_ignore("unused_signal")
 signal character_selected()
 signal movement_completed(new_position: Vector2i)
 
@@ -63,6 +58,7 @@ func _ready() -> void:
 	_setup_animation_signals()
 	_initialize_materials()
 	_connect_turn_signals()
+	_connect_resource_signals()
 	
 	# Start with idle animation
 	if animated_sprite:
@@ -100,13 +96,7 @@ func _exit_tree() -> void:
 
 func _initialize_stats() -> void:
 	"""Initialize character stats to maximum values"""
-	current_health_points = max_health_points
-	current_movement_points = max_movement_points
-	current_ability_points = max_ability_points
 	current_initiative = base_initiative
-	
-	# Emit initial stat updates
-	_emit_stat_updates()
 
 func _setup_movement_tween() -> void:
 	"""Create and configure the movement tween"""
@@ -251,11 +241,24 @@ func _disconnect_turn_signals() -> void:
 		if turn_manager.turn_ended.is_connected(_on_turn_ended):
 			turn_manager.turn_ended.disconnect(_on_turn_ended)
 
-func _emit_stat_updates() -> void:
-	"""Emit all stat update signals for UI"""
-	health_changed.emit(current_health_points, max_health_points)
-	movement_points_changed.emit(current_movement_points, max_movement_points)
-	ability_points_changed.emit(current_ability_points, max_ability_points)
+func _connect_resource_signals() -> void:
+	"""Connect resource component signals to forward them"""
+	if resources:
+		resources.health_changed.connect(_on_health_changed)
+		resources.movement_points_changed.connect(_on_movement_points_changed)
+		resources.ability_points_changed.connect(_on_ability_points_changed)
+
+func _on_health_changed(current: int, maximum: int) -> void:
+	"""Forward health changed signal"""
+	health_changed.emit(current, maximum)
+
+func _on_movement_points_changed(current: int, maximum: int) -> void:
+	"""Forward movement points changed signal"""
+	movement_points_changed.emit(current, maximum)
+
+func _on_ability_points_changed(current: int, maximum: int) -> void:
+	"""Forward ability points changed signal"""
+	ability_points_changed.emit(current, maximum)
 
 func _play_animation(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
 	"""Play an animation with the appropriate directional suffix"""
@@ -295,7 +298,7 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 		return false
 	
 	# Find path to target position
-	var path: Array[Vector2i] = grid_manager.find_path(grid_position, target_position, current_movement_points, self)
+	var path: Array[Vector2i] = grid_manager.find_path(grid_position, target_position, resources.get_movement_points(), self)
 	
 	# Check if path exists and is within movement range
 	if path.size() == 0:
@@ -305,7 +308,7 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 	var movement_cost: int = _calculate_path_cost(path)
 	
 	# Check if we have enough MP
-	if movement_cost > current_movement_points:
+	if movement_cost > resources.get_movement_points():
 		return false
 	
 	# Execute the movement via RPC to synchronize across all clients
@@ -336,13 +339,7 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	
 	# Consume movement points (only on the character owner's client)
 	if get_multiplayer_authority() == multiplayer.get_unique_id():
-		current_movement_points -= cost
-		
-		# Synchronize MP across all clients
-		_sync_movement_points.rpc(current_movement_points)
-		
-		# Emit signal for local UI updates
-		movement_points_changed.emit(current_movement_points, max_movement_points)
+		resources.consume_movement_points(cost)
 	
 	# Update grid position to final destination on all clients
 	var old_position = grid_position
@@ -359,14 +356,6 @@ func _execute_path_movement(path: Array[Vector2i], cost: int) -> void:
 	# Start movement animation on all clients
 	_animate_path_movement(path)
 
-@rpc("any_peer", "call_local", "reliable")
-func _sync_movement_points(new_mp: int) -> void:
-	"""Synchronize movement points across all clients"""
-	current_movement_points = new_mp
-	
-	# Only emit UI signals on the character owner's client
-	if get_multiplayer_authority() == multiplayer.get_unique_id():
-		movement_points_changed.emit(current_movement_points, max_movement_points)
 
 @rpc("any_peer", "call_local", "reliable")
 func _sync_position(new_grid_position: Vector2i) -> void:
@@ -481,21 +470,8 @@ func end_turn() -> void:
 
 func _refresh_resources() -> void:
 	"""Refresh MP and AP to maximum values"""
-	current_movement_points = max_movement_points
-	current_ability_points = max_ability_points
-	
-	# Synchronize resource refresh across all clients
-	_sync_movement_points.rpc(current_movement_points)
-	_sync_ability_points.rpc(current_ability_points)
+	resources.refresh_resources()
 
-@rpc("any_peer", "call_local", "reliable")
-func _sync_ability_points(new_ap: int) -> void:
-	"""Synchronize ability points across all clients"""
-	current_ability_points = new_ap
-	
-	# Only emit UI signals on the character owner's client
-	if get_multiplayer_authority() == multiplayer.get_unique_id():
-		ability_points_changed.emit(current_ability_points, max_ability_points)
 
 func is_ai_controlled() -> bool:
 	"""Check if this character is AI controlled - override in enemy classes"""
@@ -512,41 +488,23 @@ func set_grid_position(new_position: Vector2i) -> void:
 
 func take_damage(damage: int) -> void:
 	"""Apply damage to the character"""
-	current_health_points = max(0, current_health_points - damage)
+	resources.take_damage(damage)
 	
-	# Synchronize HP and TakeDamage animation simultaneously across all clients
-	_sync_damage_taken.rpc(current_health_points, damage)
+	# Play TakeDamage animation synchronized across all clients
+	_play_damage_animation.rpc()
 	
-	if current_health_points <= 0:
+	if resources.get_health_stats().current <= 0:
 		_handle_death()
 
 func heal(amount: int) -> void:
 	"""Heal the character"""
-	current_health_points = min(max_health_points, current_health_points + amount)
-	
-	# Synchronize HP across all clients
-	_sync_health_points.rpc(current_health_points)
+	resources.heal(amount)
 
 @rpc("any_peer", "call_local", "reliable")
-func _sync_damage_taken(new_hp: int, damage_amount: int) -> void:
-	"""Synchronize damage taken: HP update + TakeDamage animation simultaneously"""
-	current_health_points = new_hp
-	
-	# Play TakeDamage animation immediately on all clients
+func _play_damage_animation() -> void:
+	"""Play TakeDamage animation on all clients"""
 	_play_animation(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
-	
-	# Only emit UI signals on the character owner's client
-	if get_multiplayer_authority() == multiplayer.get_unique_id():
-		health_changed.emit(current_health_points, max_health_points)
 
-@rpc("any_peer", "call_local", "reliable")
-func _sync_health_points(new_hp: int) -> void:
-	"""Synchronize health points across all clients"""
-	current_health_points = new_hp
-	
-	# Only emit UI signals on the character owner's client
-	if get_multiplayer_authority() == multiplayer.get_unique_id():
-		health_changed.emit(current_health_points, max_health_points)
 
 func _handle_death() -> void:
 	"""Handle character death - override in subclasses for custom death messages"""
@@ -555,10 +513,8 @@ func _handle_death() -> void:
 
 func get_stats_summary() -> String:
 	"""Get a formatted string of current character stats"""
-	return "HP: %d/%d | MP: %d/%d | AP: %d/%d | Init: %d" % [
-		current_health_points, max_health_points,
-		current_movement_points, max_movement_points,
-		current_ability_points, max_ability_points,
+	return "%s | Init: %d" % [
+		resources.get_stats_summary(),
 		current_initiative
 	]
 
@@ -577,9 +533,7 @@ func get_character_state() -> Dictionary:
 	return {
 		"grid_position": grid_position,
 		"target_grid_position": target_grid_position,
-		"current_health_points": current_health_points,
-		"current_movement_points": current_movement_points,
-		"current_ability_points": current_ability_points,
+		"resources": resources.get_resource_state(),
 		"current_initiative": current_initiative,
 		"current_facing_direction": current_facing_direction,
 		"is_moving": is_moving,
@@ -592,9 +546,11 @@ func set_character_state(state: Dictionary) -> void:
 	
 	grid_position = state.get("grid_position", Vector2i.ZERO)
 	target_grid_position = state.get("target_grid_position", Vector2i.ZERO)
-	current_health_points = state.get("current_health_points", max_health_points)
-	current_movement_points = state.get("current_movement_points", max_movement_points)
-	current_ability_points = state.get("current_ability_points", max_ability_points)
+	
+	# Set resource state if provided
+	if state.has("resources") and resources:
+		resources.set_resource_state(state.resources)
+	
 	current_initiative = state.get("current_initiative", base_initiative)
 	current_facing_direction = state.get("current_facing_direction", GameConstants.Direction.BOTTOM_RIGHT)
 	is_moving = state.get("is_moving", false)
@@ -612,10 +568,6 @@ func set_character_state(state: Dictionary) -> void:
 		global_position = grid_manager.grid_to_world(grid_position)
 		# Register character position with grid manager
 		grid_manager.register_character_position(self, grid_position)
-	
-	# Emit stat updates only for local player
-	if get_multiplayer_authority() == multiplayer.get_unique_id():
-		_emit_stat_updates()
 
 @rpc("any_peer", "call_local", "reliable")
 func _sync_character_state(state: Dictionary) -> void:
@@ -634,4 +586,5 @@ func _on_animation_finished() -> void:
 		_play_animation(GameConstants.IDLE_ANIMATION_PREFIX)
 	
 	# For death animations, we want to stay on the final frame, so do nothing
-	# The animation will automatically stop on the last frame since loop is false 
+	# The animation will automatically stop on the last frame since loop is false
+	# NOTE: Ability animations are now handled by AbilityComponent itself 

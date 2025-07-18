@@ -182,7 +182,7 @@ func _get_usable_abilities() -> Array[AbilityComponent]:
 	var usable: Array[AbilityComponent] = []
 	
 	for ability in available_abilities:
-		if ability.current_cooldown <= 0 and owner_character.current_ability_points >= ability.ap_cost:
+		if ability.current_cooldown <= 0 and owner_character.resources.get_ability_points() >= ability.ap_cost:
 			usable.append(ability)
 	
 	return usable
@@ -201,7 +201,7 @@ func _evaluate_ability_action(ability: AbilityComponent) -> Dictionary:
 	
 	var target_pos = current_target.grid_position
 	var current_pos = owner_character.grid_position
-	var movement_range = owner_character.current_movement_points
+	var movement_range = owner_character.resources.get_movement_points()
 	var ability_range = ability.range
 	var total_range = movement_range + ability_range
 	
@@ -236,7 +236,7 @@ func _find_move_position_for_ability(ability: AbilityComponent, target_pos: Vect
 	# Get all valid movement positions
 	var valid_moves = owner_character.grid_manager.get_valid_movement_positions(
 		owner_character.grid_position, 
-		owner_character.current_movement_points, 
+		owner_character.resources.get_movement_points(), 
 		owner_character
 	)
 	
@@ -273,7 +273,7 @@ func _move_closer_to_target() -> void:
 
 func _find_closest_move_position() -> Vector2i:
 	"""Find the position that gets us closest to the target"""
-	if not current_target or owner_character.current_movement_points <= 0:
+	if not current_target or owner_character.resources.get_movement_points() <= 0:
 		return Vector2i(-999, -999)
 	
 	if not owner_character.grid_manager:
@@ -282,7 +282,7 @@ func _find_closest_move_position() -> Vector2i:
 	var target_pos = current_target.grid_position
 	var possible_moves = owner_character.grid_manager.get_valid_movement_positions(
 		owner_character.grid_position,
-		owner_character.current_movement_points,
+		owner_character.resources.get_movement_points(),
 		owner_character
 	)
 	
@@ -303,7 +303,7 @@ func _find_closest_move_position() -> Vector2i:
 
 func _perform_movement(target_position: Vector2i) -> void:
 	"""Execute movement to target position"""
-	if owner_character.current_movement_points <= 0:
+	if owner_character.resources.get_movement_points() <= 0:
 		return
 	
 	# Execute movement using existing BaseCharacter method

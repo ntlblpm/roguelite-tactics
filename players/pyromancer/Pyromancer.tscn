@@ -1,4 +1,4 @@
-[gd_scene load_steps=556 format=3 uid="uid://c5ihi74sr3fih"]
+[gd_scene load_steps=557 format=3 uid="uid://c5ihi74sr3fih"]
 
 [ext_resource type="Texture2D" uid="uid://b87s672lu083c" path="res://resources/shadow.tres" id="1_jpnaj"]
 [ext_resource type="Script" uid="uid://b6n6ml2jg3wlv" path="res://players/pyromancer/pyromancer.gd" id="1_script"]
@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://deqlyof0xk867" path="res://assets/entities/pyromancer/Run.png" id="8_evg4x"]
 [ext_resource type="Texture2D" uid="uid://cukblyo1mupwg" path="res://assets/entities/pyromancer/Attack3.png" id="9_attack3"]
 [ext_resource type="Texture2D" uid="uid://t1568dpg7pwq" path="res://assets/entities/pyromancer/Special1.png" id="10_special1"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="13_ipelj"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("4_attack1")
@@ -4008,3 +4009,8 @@ shape = SubResource("CircleShape2D_62ocg")
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
 occluder = SubResource("OccluderPolygon2D_1dx4e")
+
+[node name="CombatantResourcesComponent" type="Node" parent="."]
+script = ExtResource("13_ipelj")
+max_health_points = 70
+metadata/_custom_type_script = "uid://crjhgbtgiao3l"

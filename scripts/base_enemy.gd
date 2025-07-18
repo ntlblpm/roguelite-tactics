@@ -19,6 +19,10 @@ func _ready() -> void:
 	
 	# Connect AI controller signals after it's ready
 	call_deferred("_connect_ai_signals")
+	
+	# Connect resource depletion signal for death handling
+	if resources:
+		resources.resources_depleted.connect(_on_resources_depleted)
 
 func _connect_ai_signals() -> void:
 	"""Connect AIController signals to forward them"""
@@ -39,6 +43,10 @@ func _on_ai_action_performed(action_type: String) -> void:
 	"""Forward AI action performed signal"""
 	ai_action_performed.emit(action_type)
 
+func _on_resources_depleted() -> void:
+	"""Handle when resources are depleted (HP reaches 0)"""
+	_handle_death()
+
 ## AI Turn Management
 
 func start_ai_turn() -> void:
@@ -49,19 +57,6 @@ func start_ai_turn() -> void:
 		# Fallback if no AI controller
 		end_turn()
 
-## Legacy Methods (for backwards compatibility with existing enemy subclasses)
-
-func _get_attack_cost() -> int:
-	"""Get the AP cost for attacking - legacy method"""
-	return 3
-
-func _get_attack_damage() -> int:
-	"""Get the damage for attacking - legacy method"""
-	return 10
-
-func _is_target_in_attack_range(target: BaseCharacter) -> bool:
-	"""Check if target is in attack range - legacy method"""
-	return false
 
 ## Integration with Turn System
 

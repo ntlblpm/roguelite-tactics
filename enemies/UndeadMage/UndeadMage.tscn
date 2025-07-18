@@ -1,4 +1,4 @@
-[gd_scene load_steps=1468 format=3 uid="uid://dlrpxxhmyrpjy"]
+[gd_scene load_steps=1469 format=3 uid="uid://dlrpxxhmyrpjy"]
 
 [ext_resource type="Texture2D" uid="uid://cs5j2gt3uo401" path="res://assets/entities/undead mage/Idle.png" id="1_1mvjd"]
 [ext_resource type="Texture2D" uid="uid://b1gqxfb8bwpup" path="res://assets/entities/undead mage/Walk.png" id="2_2nvke"]
@@ -24,6 +24,7 @@
 [ext_resource type="Texture2D" uid="uid://cbnr6nt88ykjg" path="res://assets/entities/undead mage/StrafeRight.png" id="22_2hicy"]
 [ext_resource type="Texture2D" uid="uid://cf8uontru0vcc" path="res://assets/entities/undead mage/TakeDamage.png" id="23_3ijdz"]
 [ext_resource type="Texture2D" uid="uid://clgswkm6bdvq2" path="res://assets/entities/undead mage/Taunt.png" id="24_4jkea"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="25_wr51o"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("3_3owlf")
@@ -10623,3 +10624,7 @@ shape = SubResource("CircleShape2D_0vr1a")
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
 occluder = SubResource("OccluderPolygon2D_88orn")
+
+[node name="CombatantResourcesComponent" type="Node" parent="."]
+script = ExtResource("25_wr51o")
+metadata/_custom_type_script = "uid://crjhgbtgiao3l"

@@ -1,4 +1,4 @@
-[gd_scene load_steps=1468 format=3 uid="uid://cpf3tu0vpjcxo"]
+[gd_scene load_steps=1469 format=3 uid="uid://cpf3tu0vpjcxo"]
 
 [ext_resource type="Texture2D" uid="uid://bf3n57cvqqyf5" path="res://assets/entities/dark lord/Idle.png" id="1_idle"]
 [ext_resource type="Texture2D" uid="uid://cgdbtmmjdbsru" path="res://assets/entities/dark lord/Walk.png" id="2_walk"]
@@ -24,6 +24,7 @@
 [ext_resource type="Texture2D" uid="uid://d3icl3nbr0wpy" path="res://assets/entities/dark lord/StrafeLeft.png" id="22_strafeleft"]
 [ext_resource type="Texture2D" uid="uid://c5rbnc2l4awg1" path="res://assets/entities/dark lord/StrafeRight.png" id="23_straferight"]
 [ext_resource type="Texture2D" uid="uid://dox50sg13emwp" path="res://assets/entities/dark lord/Taunt.png" id="24_taunt"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="25_sc30x"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("3_attack1")
@@ -10616,3 +10617,7 @@ shape = SubResource("CircleShape2D_xhmli")
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 visible = false
 occluder = SubResource("OccluderPolygon2D_uosic")
+
+[node name="CombatantResourcesComponent" type="Node" parent="."]
+script = ExtResource("25_sc30x")
+metadata/_custom_type_script = "uid://crjhgbtgiao3l"
