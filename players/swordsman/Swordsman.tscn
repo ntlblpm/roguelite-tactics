@@ -19,7 +19,7 @@
 [ext_resource type="Texture2D" uid="uid://dedsgpijgrh4b" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Melee.png" id="15_uxbvd"]
 [ext_resource type="Texture2D" uid="uid://dw7fygog0b2d4" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/TakeDamage.png" id="16_cppip"]
 [ext_resource type="Texture2D" uid="uid://shilch4yqxe1" path="res://assets/entities/2D Character Knight/Spritesheets/With Shadow/Special2.png" id="17_yih5e"]
-[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="20_g0nrk"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="20_g0nrk"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tuuxc"]
 atlas = ExtResource("2_1fiuy")

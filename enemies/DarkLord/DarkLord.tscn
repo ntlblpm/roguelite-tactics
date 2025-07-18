@@ -24,7 +24,7 @@
 [ext_resource type="Texture2D" uid="uid://d3icl3nbr0wpy" path="res://assets/entities/dark lord/StrafeLeft.png" id="22_strafeleft"]
 [ext_resource type="Texture2D" uid="uid://c5rbnc2l4awg1" path="res://assets/entities/dark lord/StrafeRight.png" id="23_straferight"]
 [ext_resource type="Texture2D" uid="uid://dox50sg13emwp" path="res://assets/entities/dark lord/Taunt.png" id="24_taunt"]
-[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="25_sc30x"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="25_sc30x"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("3_attack1")

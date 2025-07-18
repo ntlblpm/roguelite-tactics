@@ -24,7 +24,7 @@
 [ext_resource type="Texture2D" uid="uid://cbnr6nt88ykjg" path="res://assets/entities/undead mage/StrafeRight.png" id="22_2hicy"]
 [ext_resource type="Texture2D" uid="uid://cf8uontru0vcc" path="res://assets/entities/undead mage/TakeDamage.png" id="23_3ijdz"]
 [ext_resource type="Texture2D" uid="uid://clgswkm6bdvq2" path="res://assets/entities/undead mage/Taunt.png" id="24_4jkea"]
-[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="25_wr51o"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="25_wr51o"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("3_3owlf")

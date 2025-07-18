@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://umx5wue4gs30"]
+[gd_scene load_steps=3 format=3 uid="uid://umx5wue4gs30"]
 
-[ext_resource type="Script" uid="uid://rruj85y2avvm" path="res://scripts/chat_panel.gd" id="1_1a2b3c"]
+[ext_resource type="Script" uid="uid://rruj85y2avvm" path="res://UIs/chat_panel.gd" id="1_6m8j6"]
+[ext_resource type="Script" uid="uid://co8wi8wl1p6dx" path="res://UIs/turn_order_panel.gd" id="2_wnapn"]
 
 [node name="CombatUI" type="Control"]
 layout_mode = 3
@@ -30,7 +31,7 @@ offset_top = -356.0
 offset_right = 258.0
 offset_bottom = -10.0
 grow_vertical = 0
-script = ExtResource("1_1a2b3c")
+script = ExtResource("1_6m8j6")
 
 [node name="ChatContainer" type="VBoxContainer" parent="UILayer/MainUI/ChatPanel"]
 layout_mode = 1
@@ -64,6 +65,7 @@ offset_top = 10.0
 offset_right = -10.0
 offset_bottom = 300.0
 grow_horizontal = 0
+script = ExtResource("2_wnapn")
 
 [node name="TurnOrderLabel" type="Label" parent="UILayer/MainUI/TurnOrderPanel"]
 layout_mode = 2

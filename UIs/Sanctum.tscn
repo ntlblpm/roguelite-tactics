@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://b8fb74dsc1kel"]
 
-[ext_resource type="Script" path="res://scripts/sanctum_ui.gd" id="1_sanctum"]
+[ext_resource type="Script" path="res://UIs/sanctum_ui.gd" id="1_sanctum"]
 
 [node name="Sanctum" type="Control"]
 layout_mode = 3

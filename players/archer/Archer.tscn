@@ -17,7 +17,7 @@
 [ext_resource type="Texture2D" uid="uid://qi2g7xvd6685" path="res://assets/entities/archer/Run.png" id="17_h23zt"]
 [ext_resource type="Texture2D" uid="uid://p1d54g3ouisd" path="res://assets/entities/archer/RunBackwards.png" id="18_runback"]
 [ext_resource type="Texture2D" uid="uid://4jqqg4oes7ry" path="res://assets/entities/archer/Special1.png" id="19_j451v"]
-[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="21_jdskl"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="21_jdskl"]
 [ext_resource type="Texture2D" uid="uid://bo1tlnbi6p0kq" path="res://assets/entities/archer/TakeDamage.png" id="22_m784y"]
 [ext_resource type="Texture2D" uid="uid://csu5y7fnuk817" path="res://assets/entities/archer/Taunt.png" id="23_n895z"]
 [ext_resource type="Texture2D" uid="uid://d3hvttqnk76yg" path="res://assets/entities/archer/Walk.png" id="24_oa60"]

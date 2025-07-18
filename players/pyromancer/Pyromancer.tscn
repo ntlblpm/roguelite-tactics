@@ -12,7 +12,7 @@
 [ext_resource type="Texture2D" uid="uid://deqlyof0xk867" path="res://assets/entities/pyromancer/Run.png" id="8_evg4x"]
 [ext_resource type="Texture2D" uid="uid://cukblyo1mupwg" path="res://assets/entities/pyromancer/Attack3.png" id="9_attack3"]
 [ext_resource type="Texture2D" uid="uid://t1568dpg7pwq" path="res://assets/entities/pyromancer/Special1.png" id="10_special1"]
-[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://scripts/combatant_resources_component.gd" id="13_ipelj"]
+[ext_resource type="Script" uid="uid://crjhgbtgiao3l" path="res://components/combatant_resources_component.gd" id="13_ipelj"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_attack1_bl_0"]
 atlas = ExtResource("4_attack1")
