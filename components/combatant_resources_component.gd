@@ -65,9 +65,8 @@ func _sync_health_points(new_hp: int) -> void:
 	"""Synchronize health points across all clients"""
 	current_health_points = new_hp
 	
-	# Only emit UI signals on the character owner's client
-	if parent_character and parent_character.get_multiplayer_authority() == multiplayer.get_unique_id():
-		health_changed.emit(current_health_points, max_health_points)
+	# Emit health changed signal for all clients to update UI
+	health_changed.emit(current_health_points, max_health_points)
 
 # Movement Points Management
 func consume_movement_points(cost: int) -> bool:
@@ -91,9 +90,8 @@ func _sync_movement_points(new_mp: int) -> void:
 	"""Synchronize movement points across all clients"""
 	current_movement_points = new_mp
 	
-	# Only emit UI signals on the character owner's client
-	if parent_character and parent_character.get_multiplayer_authority() == multiplayer.get_unique_id():
-		movement_points_changed.emit(current_movement_points, max_movement_points)
+	# Emit movement points changed signal for all clients to update UI
+	movement_points_changed.emit(current_movement_points, max_movement_points)
 
 # Ability Points Management
 func consume_ability_points(cost: int) -> bool:
@@ -117,9 +115,8 @@ func _sync_ability_points(new_ap: int) -> void:
 	"""Synchronize ability points across all clients"""
 	current_ability_points = new_ap
 	
-	# Only emit UI signals on the character owner's client
-	if parent_character and parent_character.get_multiplayer_authority() == multiplayer.get_unique_id():
-		ability_points_changed.emit(current_ability_points, max_ability_points)
+	# Emit ability points changed signal for all clients to update UI
+	ability_points_changed.emit(current_ability_points, max_ability_points)
 
 # Resource Refresh (for turn end)
 func refresh_resources() -> void:
@@ -184,9 +181,8 @@ func set_resource_state(state: Dictionary) -> void:
 	current_movement_points = state.get("current_movement_points", max_movement_points)
 	current_ability_points = state.get("current_ability_points", max_ability_points)
 	
-	# Emit stat updates only for local player
-	if parent_character and parent_character.get_multiplayer_authority() == multiplayer.get_unique_id():
-		_emit_stat_updates()
+	# Emit stat updates for all clients to see the changes
+	_emit_stat_updates()
 
 @rpc("any_peer", "call_local", "reliable")
 func _sync_resource_state(state: Dictionary) -> void:

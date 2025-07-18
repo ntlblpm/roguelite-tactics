@@ -58,6 +58,7 @@ var current_entity_hp: Label
 var current_entity_status: Label
 var turn_order_panel: VBoxContainer
 var turn_order_displays: Array[Control] = []
+var turn_order_hp_labels: Dictionary = {}  # Character -> HP Label mapping
 
 # Confirmation modal for Give up
 var give_up_confirmation_dialog: AcceptDialog
@@ -913,10 +914,17 @@ func _get_player_name_for_character(character: BaseCharacter) -> String:
 
 func _clear_turn_order_displays() -> void:
 	"""Clear all dynamic turn order displays"""
+	# Disconnect health signals
+	for character in turn_order_hp_labels:
+		if character and is_instance_valid(character) and character.resources:
+			if character.resources.health_changed.is_connected(_on_character_health_changed):
+				character.resources.health_changed.disconnect(_on_character_health_changed)
+	
 	for display in turn_order_displays:
 		if display and is_instance_valid(display):
 			display.queue_free()
 	turn_order_displays.clear()
+	turn_order_hp_labels.clear()
 
 func _hide_static_next_entity_panels() -> void:
 	"""Hide the static NextEntity panels since we're using dynamic ones"""
@@ -977,6 +985,11 @@ func _create_character_turn_display(character: BaseCharacter, turn_index: int, c
 	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	container.add_child(hp_label)
 	
+	# Store HP label reference and connect to health changes
+	turn_order_hp_labels[character] = hp_label
+	if character.resources:
+		character.resources.health_changed.connect(_on_character_health_changed.bind(character))
+	
 	var init_label = Label.new()
 	init_label.text = "Init: %d" % character.current_initiative
 	init_label.add_theme_font_size_override("font_size", 8)
@@ -995,6 +1008,13 @@ func _create_character_turn_display(character: BaseCharacter, turn_index: int, c
 		panel.modulate = Color(0.7, 0.7, 0.7)  # Darker gray
 	
 	return panel
+
+func _on_character_health_changed(current: int, maximum: int, character: BaseCharacter) -> void:
+	"""Update HP display in turn order when a character's health changes"""
+	if character in turn_order_hp_labels:
+		var hp_label = turn_order_hp_labels[character]
+		if hp_label and is_instance_valid(hp_label):
+			hp_label.text = "HP: %d/%d" % [current, maximum]
 
 func get_current_player_character() -> BaseCharacter:
 	"""Get the current player's character"""

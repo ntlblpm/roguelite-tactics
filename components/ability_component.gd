@@ -191,14 +191,15 @@ func _execute_ability_sequence(target_position: Vector2i, targets: Array[BaseCha
 	if take_damage_delay > 0:
 		await owner_character.get_tree().create_timer(take_damage_delay).timeout
 	
-	# Execute damage with host authority
-	if multiplayer.get_unique_id() == 1:  # Host only
-		# Convert targets to node paths for RPC serialization
-		var target_paths: Array[NodePath] = []
-		for target in targets:
-			if target and not target.is_dead:
-				target_paths.append(target.get_path())
-		_execute_damage_with_animation.rpc(target_paths, damage)
+	# Execute damage - any player can request damage execution
+	# Convert targets to node paths for RPC serialization
+	var target_paths: Array[NodePath] = []
+	for target in targets:
+		if target and not target.is_dead:
+			target_paths.append(target.get_path())
+	
+	# Call RPC to execute damage on all clients
+	_execute_damage_with_animation.rpc(target_paths, damage)
 	
 	# Play sound effect
 	_play_sound_effect()
@@ -218,9 +219,15 @@ func _start_ability_animation(target_position: Vector2i) -> void:
 	owner_character._play_animation_synchronized.rpc(animation, direction_to_target)
 
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func _execute_damage_with_animation(target_paths: Array[NodePath], damage_amount: int) -> void:
-	"""Execute damage and animations atomically (host authority)"""
+	"""Execute damage and animations atomically"""
+	# Security check: Only allow the ability owner's peer to execute their abilities
+	var sender_id = multiplayer.get_remote_sender_id()
+	if sender_id != 0 and owner_character and owner_character.get_multiplayer_authority() != sender_id:
+		push_warning("Ability execution rejected: sender %d does not own character with authority %d" % [sender_id, owner_character.get_multiplayer_authority()])
+		return
+	
 	for target_path in target_paths:
 		var target = get_node(target_path) as BaseCharacter
 		if target and not target.is_dead:
