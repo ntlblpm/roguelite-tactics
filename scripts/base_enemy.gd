@@ -13,8 +13,14 @@ signal ai_turn_completed()
 signal ai_action_performed(action_type: String)
 
 func _ready() -> void:
-	# Set character type for base enemy (override in subclasses)
-	character_type = "Enemy"
+	# Set character type if not already set by subclass
+	if character_type == "Character":  # Default from BaseCharacter
+		# Try to derive type from class name
+		var script_name = get_script().resource_path.get_file().get_basename()
+		if script_name.ends_with("_enemy"):
+			character_type = script_name.replace("_enemy", "").capitalize()
+		else:
+			character_type = "Unknown Enemy"
 	super()
 	
 	# Connect AI controller signals after it's ready

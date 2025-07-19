@@ -323,8 +323,8 @@ func _on_turn_started(character: BaseCharacter) -> void:
 
 func _on_turn_ended(character: BaseCharacter) -> void:
 	"""Handle when a turn ends"""
-	# Turn order UI will be updated when next turn starts
-	pass
+	# Update turn order UI to reflect the change
+	_update_turn_order_ui()
 
 func _on_network_sync_completed() -> void:
 	"""Handle when network sync is completed"""

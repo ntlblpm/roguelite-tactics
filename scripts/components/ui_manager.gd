@@ -17,12 +17,10 @@ var give_up_button: Button
 var chat_panel: ChatPanel
 
 # Turn order UI elements
-var current_entity_name: Label
-var current_entity_hp: Label
-var current_entity_status: Label
 var turn_order_panel: VBoxContainer
-var turn_order_displays: Array[Control] = []
-var turn_order_hp_labels: Dictionary = {}  # Character -> HP Label mapping
+var turn_order_displays: Array[TurnOrderSlot] = []
+var turn_order_slot_scene: PackedScene
+var current_entity_slot: TurnOrderSlot
 
 # Confirmation modal for Give up
 var give_up_confirmation_dialog: AcceptDialog
@@ -39,6 +37,11 @@ func _setup_ui_references() -> void:
 	"""Setup references to UI elements"""
 	if not combat_ui:
 		return
+	
+	# Load the turn order slot scene
+	turn_order_slot_scene = load("res://UIs/TurnOrderSlot.tscn")
+	if not turn_order_slot_scene:
+		push_error("UIManager: Failed to load TurnOrderSlot.tscn")
 		
 	# Get stat display elements
 	hp_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer/HPText")
@@ -52,9 +55,6 @@ func _setup_ui_references() -> void:
 	
 	# Get turn order UI elements
 	turn_order_panel = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel")
-	current_entity_name = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityName")
-	current_entity_hp = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityHP")
-	current_entity_status = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityStatus")
 	
 	# Get confirmation dialog
 	give_up_confirmation_dialog = combat_ui.get_node("UILayer/MainUI/GiveUpConfirmationDialog")
@@ -119,132 +119,76 @@ func update_turn_order(characters_in_order: Array[BaseCharacter], current_charac
 	# Clear existing dynamic displays
 	_clear_turn_order_displays()
 	
-	# Hide the static NextEntity panels since we're creating dynamic ones
-	_hide_static_next_entity_panels()
 	
 	# Update the main current entity display
 	if current_character and is_instance_valid(current_character):
 		_update_current_entity_display(current_character, turn_manager)
 	
-	# Create displays for all characters in turn order
-	for i in range(characters_in_order.size()):
-		var character = characters_in_order[i]
-		if not character or not is_instance_valid(character):
-			continue
-			
-		var is_current = (i == current_index and turn_manager.is_turn_active)
-		
-		# Skip the current character as it's already shown in the CurrentEntity panel
-		if is_current:
-			continue
-			
-		var character_display = _create_character_turn_display(character, i, current_index)
+	# Create a reordered list showing upcoming turns
+	var upcoming_characters: Array[BaseCharacter] = []
+	var total_chars = characters_in_order.size()
+	
+	# Add characters in the order they'll take their turns
+	# Starting from the character after the current one
+	for offset in range(1, total_chars):
+		var index = (current_index + offset) % total_chars
+		var character = characters_in_order[index]
+		if character and is_instance_valid(character):
+			upcoming_characters.append(character)
+	
+	# Create displays for upcoming characters
+	for i in range(upcoming_characters.size()):
+		var character = upcoming_characters[i]
+		var original_index = characters_in_order.find(character)
+		var character_display = _create_character_turn_display(character, i, -1)  # Pass -1 as we're showing upcoming order
 		turn_order_panel.add_child(character_display)
 		turn_order_displays.append(character_display)
 
 func _update_current_entity_display(character: BaseCharacter, turn_manager: TurnManager) -> void:
 	"""Update the main current entity display"""
-	if current_entity_name:
-		var player_name = _get_player_name_for_character(character)
-		current_entity_name.text = player_name + " (" + character.character_type + ")"
+	# Clear old current entity slot
+	if current_entity_slot and is_instance_valid(current_entity_slot):
+		current_entity_slot.cleanup()
+		current_entity_slot.queue_free()
+		current_entity_slot = null
 	
-	if current_entity_hp:
-		current_entity_hp.text = "HP: %d/%d" % [character.resources.current_health_points, character.resources.max_health_points]
-	
-	if current_entity_status:
-		# Check if it's the local player's turn
-		var is_local_turn = turn_manager.is_local_player_turn()
-		if is_local_turn:
-			current_entity_status.text = "YOUR TURN"
-			current_entity_status.modulate = Color.GREEN
-		else:
-			current_entity_status.text = "WAITING"
-			current_entity_status.modulate = Color.YELLOW
+	# Create new slot for current entity
+	if turn_order_slot_scene and character:
+		current_entity_slot = turn_order_slot_scene.instantiate() as TurnOrderSlot
+		if current_entity_slot:
+			# Insert at position 1 (after TurnOrderLabel)
+			turn_order_panel.add_child(current_entity_slot)
+			turn_order_panel.move_child(current_entity_slot, 1)
+			current_entity_slot.setup(character)
+			current_entity_slot.set_current_turn(true)
 
-func _create_character_turn_display(character: BaseCharacter, turn_index: int, current_index: int) -> Control:
+func _create_character_turn_display(character: BaseCharacter, turn_index: int, current_index: int) -> TurnOrderSlot:
 	"""Create a UI display for a character in the turn order"""
-	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(130, 40)
+	if not turn_order_slot_scene:
+		return null
+		
+	var slot = turn_order_slot_scene.instantiate() as TurnOrderSlot
+	if slot:
+		slot.setup(character)
+		# No color differentiation - all slots use the same appearance
 	
-	var container = VBoxContainer.new()
-	container.anchors_preset = Control.PRESET_FULL_RECT
-	container.offset_left = 4
-	container.offset_top = 4
-	container.offset_right = -4
-	container.offset_bottom = -4
-	panel.add_child(container)
-	
-	var name_label = Label.new()
-	var player_name = _get_player_name_for_character(character)
-	name_label.text = player_name + " (" + character.character_type + ")"
-	name_label.add_theme_font_size_override("font_size", 10)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	container.add_child(name_label)
-	
-	var hp_label = Label.new()
-	hp_label.text = "HP: %d/%d" % [character.resources.current_health_points, character.resources.max_health_points]
-	hp_label.add_theme_font_size_override("font_size", 8)
-	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	container.add_child(hp_label)
-	
-	# Store HP label reference and connect to health changes
-	turn_order_hp_labels[character] = hp_label
-	if character.resources:
-		character.resources.health_changed.connect(_on_character_health_changed.bind(character))
-	
-	var init_label = Label.new()
-	init_label.text = "Init: %d" % character.current_initiative
-	init_label.add_theme_font_size_override("font_size", 8)
-	init_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	container.add_child(init_label)
-	
-	# Color code based on turn position
-	if turn_index == current_index + 1:
-		# Next to act
-		panel.modulate = Color(1.0, 1.0, 0.7)  # Light yellow
-	elif turn_index > current_index:
-		# Upcoming
-		panel.modulate = Color(0.9, 0.9, 0.9)  # Light gray
-	else:
-		# Already acted this round
-		panel.modulate = Color(0.7, 0.7, 0.7)  # Darker gray
-	
-	return panel
+	return slot
 
-func _on_character_health_changed(current: int, maximum: int, character: BaseCharacter) -> void:
-	"""Update HP display in turn order when a character's health changes"""
-	if character in turn_order_hp_labels:
-		var hp_label = turn_order_hp_labels[character]
-		if hp_label and is_instance_valid(hp_label):
-			hp_label.text = "HP: %d/%d" % [current, maximum]
 
 func _clear_turn_order_displays() -> void:
 	"""Clear all dynamic turn order displays"""
-	# Disconnect health signals
-	for character in turn_order_hp_labels:
-		if character and is_instance_valid(character) and character.resources:
-			if character.resources.health_changed.is_connected(_on_character_health_changed):
-				character.resources.health_changed.disconnect(_on_character_health_changed)
-	
-	for display in turn_order_displays:
-		if display and is_instance_valid(display):
-			display.queue_free()
+	for slot in turn_order_displays:
+		if slot and is_instance_valid(slot):
+			slot.cleanup()
+			slot.queue_free()
 	turn_order_displays.clear()
-	turn_order_hp_labels.clear()
+	
+	# Also clear current entity slot
+	if current_entity_slot and is_instance_valid(current_entity_slot):
+		current_entity_slot.cleanup()
+		current_entity_slot.queue_free()
+		current_entity_slot = null
 
-func _hide_static_next_entity_panels() -> void:
-	"""Hide the static NextEntity panels since we're using dynamic ones"""
-	if turn_order_panel:
-		var next_entity1 = turn_order_panel.get_node_or_null("NextEntity1")
-		var next_entity2 = turn_order_panel.get_node_or_null("NextEntity2")
-		var next_entity3 = turn_order_panel.get_node_or_null("NextEntity3")
-		
-		if next_entity1:
-			next_entity1.visible = false
-		if next_entity2:
-			next_entity2.visible = false
-		if next_entity3:
-			next_entity3.visible = false
 
 func _get_player_name_for_character(character: BaseCharacter) -> String:
 	"""Get a display name for the character's player"""
