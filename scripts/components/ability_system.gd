@@ -163,8 +163,8 @@ func _show_ability_range(character: BaseCharacter, ability: AbilityComponent) ->
 		null  # No moving character for ability targeting
 	)
 
-func handle_ability_shortcut(ability_index: int) -> void:
-	"""Handle ability shortcut key press"""
+func activate_ability_by_index(ability_index: int) -> void:
+	"""Activate an ability by its index in the ability bar"""
 	# Only process if it's the local player's turn
 	if not turn_manager or not turn_manager.is_local_player_turn() or not turn_manager.is_character_turn_active():
 		return
@@ -173,10 +173,6 @@ func handle_ability_shortcut(ability_index: int) -> void:
 	if ability_index < ability_buttons.size():
 		_on_ability_button_pressed(ability_index)
 
-func handle_escape_key() -> void:
-	"""Handle escape key press"""
-	if ability_targeting_mode:
-		cancel_ability_targeting()
 
 func handle_tile_click(grid_position: Vector2i) -> void:
 	"""Handle tile click in ability targeting mode"""

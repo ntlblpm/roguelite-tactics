@@ -2,6 +2,7 @@
 
 - death isn't working correctly
 - enemies don't use all their ap, just attack once and then end turn
+- when selecting an ability without moving the mouse and using a hotkey, the tile is not highlighted until the mouse moves
 
 ## todos
 

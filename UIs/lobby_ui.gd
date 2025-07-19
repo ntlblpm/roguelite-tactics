@@ -300,4 +300,4 @@ func _on_back_pressed() -> void:
 		NetworkManager.disconnect_from_network()
 	
 	# Return to main menu
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn") 
+	get_tree().change_scene_to_file("res://UIs/MainMenu.tscn") 

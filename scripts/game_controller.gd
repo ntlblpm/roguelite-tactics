@@ -99,11 +99,7 @@ func _connect_component_signals() -> void:
 	ui_manager.give_up_requested.connect(_on_give_up_requested)
 	ui_manager.end_turn_requested.connect(_on_end_turn_requested)
 	
-	# Input handler signals
-	input_handler.tile_clicked.connect(_on_tile_clicked)
-	input_handler.ability_shortcut_pressed.connect(_on_ability_shortcut_pressed)
-	input_handler.escape_pressed.connect(_on_escape_pressed)
-	input_handler.debug_key_pressed.connect(_on_debug_key_pressed)
+	# Input handler is set up to call methods directly
 	
 	# Ability system signals
 	ability_system.ability_used.connect(_on_ability_used)
@@ -243,7 +239,7 @@ func _on_give_up_requested() -> void:
 	await _cleanup_before_scene_change()
 	
 	# Return to main menu
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	get_tree().change_scene_to_file("res://UIs/MainMenu.tscn")
 
 func _on_end_turn_requested() -> void:
 	"""Handle end turn request from UI"""
@@ -276,27 +272,6 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 	else:
 		ui_manager.add_system_message("Cannot move to that position")
 
-func _on_ability_shortcut_pressed(ability_index: int) -> void:
-	"""Handle ability shortcut from input handler"""
-	ability_system.handle_ability_shortcut(ability_index)
-
-func _on_escape_pressed() -> void:
-	"""Handle escape key from input handler"""
-	ability_system.handle_escape_key()
-
-func _on_debug_key_pressed(key: String) -> void:
-	"""Handle debug key presses"""
-	match key:
-		"F1":
-			_debug_print_game_state()
-		"F2":
-			_debug_test_movement()
-		"F3":
-			_debug_test_damage()
-		"F4":
-			_debug_test_enemy_ai()
-		"G":
-			_toggle_grid_borders()
 
 func _on_ability_used(character: BaseCharacter, ability: AbilityComponent, target_position: Vector2i) -> void:
 	"""Handle when an ability is used"""
