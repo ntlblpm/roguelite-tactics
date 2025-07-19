@@ -157,7 +157,7 @@ func _show_ability_range(character: BaseCharacter, ability: AbilityComponent) ->
 	grid_manager.show_range_preview(
 		character.grid_position,
 		ability.range,
-		Color(0.2, 0.5, 1.0, 0.5),  # Blue color for abilities
+		Color(1.0, 0.0, 0.0, 0.5),  # Red color for abilities
 		true,  # Include entities (abilities target characters)
 		"tiles",  # Highlight target tile on hover
 		null  # No moving character for ability targeting

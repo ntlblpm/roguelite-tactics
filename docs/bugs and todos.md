@@ -5,9 +5,7 @@
 
 ## todos
 
-- ui improvements everywhere, starting with hp bars in turn order display
-    - turn order display should use live cameras of each combatant
-- should add end turn and give up hotkeys
+- ui improvements everywhere
 - add more enemies to test room
 
 later:
