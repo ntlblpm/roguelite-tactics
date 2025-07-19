@@ -22,6 +22,9 @@ signal combat_phase_changed(phase: String)
 var end_turn_button: Button = null
 var chat_panel: ChatPanel = null
 
+# Death handling
+var waiting_for_death_sequence: bool = false
+
 func _ready() -> void:
 	# Add to group for easy discovery by characters
 	add_to_group("turn_manager")
@@ -39,6 +42,10 @@ func _exit_tree() -> void:
 		if character and is_instance_valid(character):
 			if character.turn_ended.is_connected(_on_character_turn_ended):
 				character.turn_ended.disconnect(_on_character_turn_ended)
+			if character.has_signal("character_died") and character.character_died.is_connected(_on_character_died):
+				character.character_died.disconnect(_on_character_died)
+			if character.has_signal("death_sequence_completed") and character.death_sequence_completed.is_connected(_on_death_sequence_completed):
+				character.death_sequence_completed.disconnect(_on_death_sequence_completed)
 	
 	# Clear references
 	characters.clear()
@@ -78,6 +85,10 @@ func initialize_multiplayer(character_list: Array[BaseCharacter], ui_button: But
 	for character in characters:
 		if character and not character.turn_ended.is_connected(_on_character_turn_ended):
 			character.turn_ended.connect(_on_character_turn_ended)
+		if character and not character.character_died.is_connected(_on_character_died):
+			character.character_died.connect(_on_character_died)
+		if character and not character.death_sequence_completed.is_connected(_on_death_sequence_completed):
+			character.death_sequence_completed.connect(_on_death_sequence_completed)
 	
 	# DON'T start the first turn immediately - let the game controller handle synchronization first
 
@@ -98,6 +109,20 @@ func _start_turn() -> void:
 	
 	# Only host should start turns to maintain synchronization
 	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+		return
+	
+	# Skip dead or invalid characters
+	var attempts = 0
+	while current_character_index < characters.size() and attempts < characters.size():
+		var char = characters[current_character_index]
+		if not is_instance_valid(char) or char.is_dead:
+			current_character_index = (current_character_index + 1) % characters.size()
+			attempts += 1
+		else:
+			break
+	
+	# Safety check: if all characters are dead or invalid, return
+	if attempts >= characters.size() or _all_characters_dead():
 		return
 	
 	is_turn_active = true
@@ -258,8 +283,23 @@ func _prepare_next_turn() -> void:
 	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
 		return
 	
-	# Move to next character
+	# Move to next character, skipping dead or invalid ones
+	var start_index = current_character_index
 	current_character_index = (current_character_index + 1) % characters.size()
+	
+	# Skip dead or invalid characters
+	var attempts = 0
+	while attempts < characters.size():
+		var char = characters[current_character_index]
+		if not is_instance_valid(char) or char.is_dead:
+			current_character_index = (current_character_index + 1) % characters.size()
+			attempts += 1
+		else:
+			break
+	
+	# If we've checked all characters and they're all dead or invalid, stop
+	if attempts >= characters.size() or _all_characters_dead():
+		return
 	
 	# If we've cycled through all characters, increment turn number
 	if current_character_index == 0:
@@ -319,8 +359,13 @@ func remove_character(character: BaseCharacter) -> void:
 		if character_index <= current_character_index:
 			current_character_index = max(0, current_character_index - 1)
 		
+		# Disconnect signals
 		if character.turn_ended.is_connected(_on_character_turn_ended):
 			character.turn_ended.disconnect(_on_character_turn_ended)
+		if character.character_died.is_connected(_on_character_died):
+			character.character_died.disconnect(_on_character_died)
+		if character.death_sequence_completed.is_connected(_on_death_sequence_completed):
+			character.death_sequence_completed.disconnect(_on_death_sequence_completed)
 
 func get_turn_order_display() -> String:
 	"""Get a display string showing turn order and current player"""
@@ -328,6 +373,10 @@ func get_turn_order_display() -> String:
 	
 	for i in range(characters.size()):
 		var character = characters[i]
+		# Skip invalid or dead characters
+		if not is_instance_valid(character) or character.is_dead:
+			continue
+		
 		var player_name = _get_player_name_for_character(character)
 		var hp_display = "%d/%d HP" % [character.resources.current_health_points, character.resources.max_health_points]
 		
@@ -344,6 +393,44 @@ func get_turn_order_display() -> String:
 func get_characters_in_turn_order() -> Array[BaseCharacter]:
 	"""Get all characters in their current turn order"""
 	return characters.duplicate()
+
+func _on_character_died(character: BaseCharacter) -> void:
+	"""Handle when a character dies"""
+	if not character:
+		return
+	
+	# Log death
+	if chat_panel:
+		var player_name = _get_player_name_for_character(character)
+		chat_panel.add_combat_message("%s (%s) has been defeated!" % [player_name, character.character_type])
+	
+	# If it's the current character's turn, wait for death sequence
+	if character == current_character and is_turn_active:
+		waiting_for_death_sequence = true
+		# Disable end turn button during death sequence
+		if end_turn_button:
+			end_turn_button.disabled = true
+
+func _on_death_sequence_completed() -> void:
+	"""Handle when a character's death sequence is complete"""
+	if waiting_for_death_sequence:
+		waiting_for_death_sequence = false
+		# Re-enable end turn button
+		if end_turn_button:
+			end_turn_button.disabled = false
+		
+		# End the current turn and move to next character
+		if NetworkManager and NetworkManager.is_host:
+			is_turn_active = false
+			turn_ended.emit(current_character)
+			_prepare_next_turn()
+
+func _all_characters_dead() -> bool:
+	"""Check if all characters are dead or invalid"""
+	for character in characters:
+		if is_instance_valid(character) and not character.is_dead:
+			return false
+	return true
 
 func get_turn_summary() -> String:
 	"""Get a summary of the current turn state"""
@@ -401,4 +488,8 @@ func _cleanup_existing_connections() -> void:
 	for character in characters:
 		if character and is_instance_valid(character):
 			if character.turn_ended.is_connected(_on_character_turn_ended):
-				character.turn_ended.disconnect(_on_character_turn_ended) 
+				character.turn_ended.disconnect(_on_character_turn_ended)
+			if character.has_signal("character_died") and character.character_died.is_connected(_on_character_died):
+				character.character_died.disconnect(_on_character_died)
+			if character.has_signal("death_sequence_completed") and character.death_sequence_completed.is_connected(_on_death_sequence_completed):
+				character.death_sequence_completed.disconnect(_on_death_sequence_completed) 

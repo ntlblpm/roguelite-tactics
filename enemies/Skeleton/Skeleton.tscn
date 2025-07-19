@@ -10635,5 +10635,6 @@ metadata/_custom_type_script = "uid://crjhgbtgiao3l"
 script = ExtResource("25_mx232")
 ability_name = "Melee Strike"
 description = "Basic melee attack"
+damage = 40
 take_damage_delay = 0.2
 metadata/_custom_type_script = "uid://bh56fgehx2jk"

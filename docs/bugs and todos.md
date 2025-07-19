@@ -1,6 +1,6 @@
 ## bugs
 
-- death isn't working correctly
+- death animation isn't playing for players 
 - enemies don't use all their ap, just attack once and then end turn
 
 ## todos

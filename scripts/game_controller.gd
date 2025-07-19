@@ -175,6 +175,10 @@ func _connect_systems() -> void:
 			character.character_selected.connect(_on_character_selected)
 			character.movement_completed.connect(_on_movement_completed)
 		
+		# Connect death signal for all player characters (host checks game end)
+		if NetworkManager.is_host:
+			character.character_died.connect(_on_character_died)
+		
 		character_list.append(character)
 	
 	# Process enemy characters
@@ -187,6 +191,10 @@ func _connect_systems() -> void:
 		
 		# Position enemy in world coordinates and register with grid manager
 		enemy.set_grid_position(enemy.grid_position)
+		
+		# Connect death signal for enemies (host checks game end)
+		if NetworkManager.is_host:
+			enemy.character_died.connect(_on_character_died)
 		
 		character_list.append(enemy)
 	
@@ -451,6 +459,77 @@ func _get_player_name_for_character(character: BaseCharacter) -> String:
 	else:
 		return "Player " + str(authority)
 
+
+func _on_character_died(character: BaseCharacter) -> void:
+	"""Handle when any character dies - check for game end conditions"""
+	if not NetworkManager.is_host:
+		return
+	
+	# Update UI to reflect the death
+	_update_turn_order_ui()
+	
+	# Wait a frame to ensure the death is fully processed
+	await get_tree().process_frame
+	
+	# Check victory condition (all enemies dead)
+	var all_enemies_dead: bool = true
+	var enemy_characters = spawn_manager.get_enemy_characters()
+	for enemy in enemy_characters:
+		if enemy and is_instance_valid(enemy) and not enemy.is_dead:
+			all_enemies_dead = false
+			break
+	
+	if all_enemies_dead:
+		# Victory!
+		ui_manager.add_system_message("Victory! All enemies defeated!")
+		print("[GameController] Host triggering victory for all players")
+		await get_tree().create_timer(2.0).timeout
+		_trigger_victory.rpc()
+		return
+	
+	# Check defeat condition (all players dead)
+	var all_players_dead: bool = true
+	var player_characters = spawn_manager.get_player_characters()
+	for peer_id in player_characters:
+		var player = player_characters[peer_id]
+		if player and is_instance_valid(player) and not player.is_dead:
+			all_players_dead = false
+			break
+	
+	if all_players_dead:
+		# Defeat!
+		ui_manager.add_system_message("Defeat! All players have fallen!")
+		print("[GameController] Host triggering defeat for all players")
+		await get_tree().create_timer(2.0).timeout
+		_trigger_defeat.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _trigger_victory() -> void:
+	"""Trigger victory screen for all players"""
+	print("[GameController] Victory RPC received on peer %d" % multiplayer.get_unique_id())
+	
+	# Don't disconnect from network yet - we need to stay connected for scene transition
+	current_player_id = -1
+	
+	# Small delay to ensure all clients receive this RPC
+	await get_tree().create_timer(0.5).timeout
+	
+	# Now change scene (this will handle network cleanup)
+	get_tree().change_scene_to_file("res://UIs/VictoryScreen.tscn")
+
+@rpc("authority", "call_local", "reliable")
+func _trigger_defeat() -> void:
+	"""Trigger defeat screen for all players"""
+	print("[GameController] Defeat RPC received on peer %d" % multiplayer.get_unique_id())
+	
+	# Don't disconnect from network yet - we need to stay connected for scene transition
+	current_player_id = -1
+	
+	# Small delay to ensure all clients receive this RPC
+	await get_tree().create_timer(0.5).timeout
+	
+	# Now change scene (this will handle network cleanup)
+	get_tree().change_scene_to_file("res://UIs/DefeatScreen.tscn")
 
 func _toggle_grid_borders() -> void:
 	"""Toggle grid border visibility"""

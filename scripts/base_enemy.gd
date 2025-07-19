@@ -65,12 +65,13 @@ func is_ai_controlled() -> bool:
 ## Death Handling Override
 
 func _handle_death() -> void:
-	"""Handle enemy death"""
-	is_dead = true
+	"""Handle enemy-specific death logic"""
+	# Stop AI if it's running
 	if ai_controller:
 		ai_controller._stop_ai_turn()
-	_play_animation(GameConstants.DIE_ANIMATION_PREFIX)
+	
+	# Call parent implementation
+	super._handle_death()
 	
 	# TODO: Award experience to players
-	# TODO: Drop loot
-	# TODO: Remove from turn order 
+	# TODO: Drop loot 

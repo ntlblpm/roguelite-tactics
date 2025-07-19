@@ -34,6 +34,8 @@ signal ability_points_changed(current: int, maximum: int)
 signal turn_ended()
 signal character_selected()
 signal movement_completed(new_position: Vector2i)
+signal character_died(character: BaseCharacter)
+signal death_sequence_completed()
 
 # Reference to grid manager (will be set externally)
 var grid_manager: Node = null
@@ -230,7 +232,7 @@ func _on_ability_points_changed(current: int, maximum: int) -> void:
 
 func _on_resources_depleted() -> void:
 	"""Handle when resources are depleted (HP reaches 0)"""
-	_handle_death()
+	request_death()
 
 func _play_animation(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
 	"""Play an animation with the appropriate directional suffix, with fallback support"""
@@ -482,10 +484,74 @@ func heal(amount: int) -> void:
 	resources.heal(amount)
 
 
+@rpc("any_peer", "call_remote", "reliable")
+func request_death() -> void:
+	"""Request character death - validated by host"""
+	if not multiplayer.is_server():
+		return
+	
+	# Validate death conditions
+	if is_dead or resources.current_health_points > 0:
+		return
+	
+	# Host authorizes death and broadcasts to all peers
+	_start_death_sequence.rpc()
+
+@rpc("authority", "call_local", "reliable")
+func _start_death_sequence() -> void:
+	"""Start the death sequence on all peers"""
+	if is_dead:
+		return
+	
+	is_dead = true
+	character_died.emit(self)
+	
+	# Start the visual death sequence
+	await _do_death_sequence()
+	
+	# Notify turn manager that death sequence is complete
+	death_sequence_completed.emit()
+
+func _do_death_sequence() -> void:
+	"""Perform the visual death sequence"""
+	# Play death animation if available
+	_play_animation(GameConstants.DIE_ANIMATION_PREFIX)
+	
+	# Wait for death animation to complete
+	if animated_sprite and animated_sprite.animation != "":
+		await animated_sprite.animation_finished
+	
+	# Apply fade effect
+	var fade_shader = preload("res://shaders/fade_shader.gdshader")
+	if fade_shader and animated_sprite:
+		var material = ShaderMaterial.new()
+		material.shader = fade_shader
+		material.set_shader_parameter("u_alpha", 1.0)
+		animated_sprite.material = material
+		
+		# Animate fade out
+		var fade_tween = create_tween()
+		fade_tween.tween_property(material, "shader_parameter/u_alpha", 0.0, 1.0)
+		await fade_tween.finished
+	else:
+		# Fallback: use modulate alpha
+		var fade_tween = create_tween()
+		fade_tween.tween_property(self, "modulate:a", 0.0, 1.0)
+		await fade_tween.finished
+	
+	# Remove from grid
+	if grid_manager:
+		grid_manager.unregister_character(self)
+	
+	# Let subclasses do custom cleanup
+	_handle_death()
+	
+	# Remove from scene
+	queue_free()
+
 func _handle_death() -> void:
 	"""Handle character death - override in subclasses for custom death messages"""
-	is_dead = true
-	_play_animation_synchronized.rpc(GameConstants.DIE_ANIMATION_PREFIX)
+	pass
 
 func get_stats_summary() -> String:
 	"""Get a formatted string of current character stats"""
