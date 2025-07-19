@@ -17,12 +17,17 @@ var message_history: Array[String] = []
 func _ready() -> void:
 	# Connect signals
 	chat_input.text_submitted.connect(_on_message_submitted)
+	chat_input.focus_entered.connect(_on_focus_entered)
+	chat_input.focus_exited.connect(_on_focus_exited)
+	
+	# Set initial visual state
+	chat_input.modulate = Color(0.8, 0.8, 0.8, 0.8)
+	chat_input.placeholder_text = "Press Enter to chat..."
 	
 	# Add initial system message
-	add_system_message("Type your message and press Enter to send")
+	add_system_message("Press Enter to type a message")
 	
-	# Focus the input for immediate typing
-	chat_input.grab_focus()
+	# Don't auto-focus on start
 
 func _on_message_submitted(message_text: String) -> void:
 	"""Handle when user submits a message by pressing Enter"""
@@ -35,9 +40,9 @@ func _on_message_submitted(message_text: String) -> void:
 	# Emit signal for multiplayer or other systems
 	message_sent.emit(message_text, "Player")
 	
-	# Clear input and refocus
+	# Clear input and release focus
 	chat_input.clear()
-	chat_input.grab_focus()
+	chat_input.release_focus()
 
 func add_message(sender: String, message: String) -> void:
 	"""Add a regular chat message from a player"""
@@ -81,6 +86,24 @@ func toggle_visibility() -> void:
 	visible = !visible
 	if visible:
 		chat_input.grab_focus()
+
+func _on_focus_entered() -> void:
+	"""Handle when chat input gains focus"""
+	# Visual feedback that chat is active
+	chat_input.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	add_system_message("Chat active - press Escape to exit")
+
+func _on_focus_exited() -> void:
+	"""Handle when chat input loses focus"""
+	# Visual feedback that chat is inactive
+	chat_input.modulate = Color(0.8, 0.8, 0.8, 0.8)
+	# Clear any partial input
+	if not chat_input.text.is_empty():
+		chat_input.clear()
+
+func is_chat_focused() -> bool:
+	"""Check if chat input is currently focused"""
+	return chat_input and chat_input.has_focus()
 
 # Method to receive messages from other players (for multiplayer)
 func receive_message(sender: String, message: String) -> void:

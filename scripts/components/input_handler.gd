@@ -29,6 +29,19 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	"""Handle input actions using InputMap"""
 	
+	# Check if chat is focused - if so, don't process game shortcuts
+	if ui_manager and ui_manager.get_chat_panel() and ui_manager.get_chat_panel().is_chat_focused():
+		# Only allow Escape to exit chat
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("cancel_ability"):
+			ui_manager.get_chat_panel().chat_input.release_focus()
+		return
+	
+	# Handle Enter key to focus chat
+	if event.is_action_pressed("ui_text_submit"):
+		if ui_manager and ui_manager.get_chat_panel():
+			ui_manager.get_chat_panel().chat_input.grab_focus()
+		return
+	
 	# Handle ability shortcuts
 	for i in range(1, 7):
 		if event.is_action_pressed("ability_" + str(i)):
