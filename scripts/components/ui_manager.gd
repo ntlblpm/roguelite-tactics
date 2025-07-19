@@ -28,6 +28,9 @@ var give_up_confirmation_dialog: AcceptDialog
 # Ability bar elements
 var ability_buttons: Array[Button] = []
 
+# Turn state
+var is_player_turn: bool = false
+
 func initialize(ui_root: Control) -> void:
 	"""Initialize UI manager with combat UI root"""
 	combat_ui = ui_root
@@ -237,6 +240,28 @@ func get_end_turn_button() -> Button:
 func get_chat_panel() -> ChatPanel:
 	"""Get the chat panel"""
 	return chat_panel
+
+func update_turn_state(is_local_player_turn: bool, current_character: BaseCharacter) -> void:
+	"""Update UI based on whether it's the local player's turn"""
+	is_player_turn = is_local_player_turn
+	
+	# Update button states
+	_update_button_states(is_local_player_turn)
+
+func _update_button_states(is_local_player_turn: bool) -> void:
+	"""Enable/disable buttons based on turn state"""
+	# End turn button
+	if end_turn_button:
+		end_turn_button.disabled = not is_local_player_turn
+		if is_local_player_turn:
+			end_turn_button.modulate = Color(1.2, 1.2, 1.2)  # Slightly brighter
+		else:
+			end_turn_button.modulate = Color(0.6, 0.6, 0.6)  # Dimmed
+	
+	# Store turn state for ability system coordination
+	for button in ability_buttons:
+		if button:
+			button.set_meta("is_player_turn", is_local_player_turn)
 
 func cleanup() -> void:
 	"""Clean up UI resources"""

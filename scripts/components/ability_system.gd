@@ -78,18 +78,21 @@ func _update_ability_button(button: Button, ability: AbilityComponent, character
 	button.set_meta("ability", ability)
 	
 	# Update visual state
+	var is_player_turn = button.get_meta("is_player_turn", true)
+	var base_brightness = 1.0 if is_player_turn else 0.6
+	
 	if ability.current_cooldown > 0:
 		# On cooldown - show red tint
-		button.modulate = Color(1.0, 0.5, 0.5, 1.0)
+		button.modulate = Color(1.0 * base_brightness, 0.5 * base_brightness, 0.5 * base_brightness, 1.0)
 	elif character.resources.current_ability_points < ability.ap_cost:
 		# Not enough AP - show blue tint
-		button.modulate = Color(0.5, 0.5, 1.0, 1.0)
+		button.modulate = Color(0.5 * base_brightness, 0.5 * base_brightness, 1.0 * base_brightness, 1.0)
 	elif not can_use:
 		# Other reason - grey out
-		button.modulate = Color(0.5, 0.5, 0.5, 1.0)
+		button.modulate = Color(0.5 * base_brightness, 0.5 * base_brightness, 0.5 * base_brightness, 1.0)
 	else:
 		# Can use - normal color
-		button.modulate = Color.WHITE
+		button.modulate = Color(base_brightness, base_brightness, base_brightness, 1.0)
 
 func _on_ability_button_pressed(button_index: int) -> void:
 	"""Handle ability button press"""
@@ -235,7 +238,9 @@ func disable_all_abilities() -> void:
 	var ability_buttons = ui_manager.get_ability_buttons()
 	for button in ability_buttons:
 		button.disabled = true
-		button.modulate = Color(0.5, 0.5, 0.5, 1.0)
+		var is_player_turn = button.get_meta("is_player_turn", false)
+		var base_brightness = 1.0 if is_player_turn else 0.6
+		button.modulate = Color(0.5 * base_brightness, 0.5 * base_brightness, 0.5 * base_brightness, 1.0)
 
 func is_in_targeting_mode() -> bool:
 	"""Check if currently in ability targeting mode"""

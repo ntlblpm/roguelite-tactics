@@ -286,6 +286,10 @@ func _on_turn_started(character: BaseCharacter) -> void:
 	"""Handle when a turn starts"""
 	_update_turn_order_ui()
 	
+	# Update UI turn state (button brightness based on turn)
+	var is_local_turn = turn_manager and turn_manager.is_local_player_turn()
+	ui_manager.update_turn_state(is_local_turn, character)
+	
 	# Update the stat display to show the current character's stats
 	if turn_manager and turn_manager.is_local_player_turn():
 		var current_turn_character = turn_manager.get_current_character()
