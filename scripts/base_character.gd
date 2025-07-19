@@ -214,6 +214,7 @@ func _connect_resource_signals() -> void:
 		resources.health_changed.connect(_on_health_changed)
 		resources.movement_points_changed.connect(_on_movement_points_changed)
 		resources.ability_points_changed.connect(_on_ability_points_changed)
+		resources.resources_depleted.connect(_on_resources_depleted)
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Forward health changed signal"""
@@ -226,6 +227,10 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 func _on_ability_points_changed(current: int, maximum: int) -> void:
 	"""Forward ability points changed signal"""
 	ability_points_changed.emit(current, maximum)
+
+func _on_resources_depleted() -> void:
+	"""Handle when resources are depleted (HP reaches 0)"""
+	_handle_death()
 
 func _play_animation(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
 	"""Play an animation with the appropriate directional suffix, with fallback support"""

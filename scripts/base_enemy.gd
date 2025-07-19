@@ -25,10 +25,6 @@ func _ready() -> void:
 	
 	# Connect AI controller signals after it's ready
 	call_deferred("_connect_ai_signals")
-	
-	# Connect resource depletion signal for death handling
-	if resources:
-		resources.resources_depleted.connect(_on_resources_depleted)
 
 func _connect_ai_signals() -> void:
 	"""Connect AIController signals to forward them"""
@@ -48,10 +44,6 @@ func _on_ai_turn_completed() -> void:
 func _on_ai_action_performed(action_type: String) -> void:
 	"""Forward AI action performed signal"""
 	ai_action_performed.emit(action_type)
-
-func _on_resources_depleted() -> void:
-	"""Handle when resources are depleted (HP reaches 0)"""
-	_handle_death()
 
 ## AI Turn Management
 
