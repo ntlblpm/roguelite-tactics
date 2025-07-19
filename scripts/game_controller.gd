@@ -2,189 +2,48 @@ class_name GameController
 extends Node2D
 
 ## Main game controller that coordinates all systems for multiplayer
-## Manages the integration between grid, turns, characters, networking, and UI
-
-# Scene references for all character classes
-@export var knight_scene: PackedScene = preload("res://players/Knight/Knight.tscn")
-@export var ranger_scene: PackedScene = preload("res://players/Ranger/Ranger.tscn")
-@export var pyromancer_scene: PackedScene = preload("res://players/Pyromancer/Pyromancer.tscn")
-@export var assassin_scene: PackedScene = preload("res://players/Assassin/Assassin.tscn")
-
-# Scene references for enemies
-@export var skeleton_scene: PackedScene = preload("res://enemies/Skeleton/Skeleton.tscn")
+## Now uses composition pattern with specialized manager components
 
 # System managers
 var grid_manager: GridManager
 var turn_manager: TurnManager
 
-# Game entities - now supports multiple players
-var player_characters: Dictionary = {} # peer_id -> BaseCharacter
-var enemy_characters: Array[BaseCharacter] = [] # Array of enemy characters
-var current_player_id: int = -1
-var is_spawning_characters: bool = false  # Prevent duplicate spawning
+# Component managers
+var spawn_manager: SpawnManager
+var ui_manager: UIManager
+var input_handler: InputHandler
+var ability_system: AbilitySystem
+var network_sync_manager: NetworkSyncManager
 
-# Starting positions for players
-var starting_positions: Array[Vector2i] = [
-	Vector2i(0, 0),    # Player 1
-	Vector2i(-2, 2),   # Player 2
-	Vector2i(2, -2)    # Player 3
-]
-
-# Starting positions for enemies (for testing)
-var enemy_spawn_positions: Array[Vector2i] = [
-	Vector2i(3, -2)    # Single skeleton in top right area
-]
-
-# UI references
+# Scene references
 @onready var combat_ui: Control = $CombatUI
 @onready var tilemap_layer: TileMapLayer = $CombatArea/TileMapLayer
 
-# UI elements
-var hp_text: Label
-var ap_text: Label
-var mp_text: Label
-var end_turn_button: Button
-var give_up_button: Button
-var chat_panel: ChatPanel
-
-# Ability bar elements
-var ability_buttons: Array[Button] = []
-var selected_ability: AbilityComponent = null
-var ability_targeting_mode: bool = false
-
-# Turn order UI elements
-var current_entity_name: Label
-var current_entity_hp: Label
-var current_entity_status: Label
-var turn_order_panel: VBoxContainer
-var turn_order_displays: Array[Control] = []
-var turn_order_hp_labels: Dictionary = {}  # Character -> HP Label mapping
-
-# Confirmation modal for Give up
-var give_up_confirmation_dialog: AcceptDialog
+# Current player tracking
+var current_player_id: int = -1
 
 func _ready() -> void:
 	_initialize_systems()
-	_setup_ui_references()
+	_initialize_components()
+	_connect_component_signals()
 	
 	# Don't initialize multiplayer game immediately - defer to next frame to ensure clean state
 	call_deferred("_deferred_multiplayer_initialization")
 
-func _input(event: InputEvent) -> void:
-	"""Handle keyboard shortcuts for abilities"""
-	if not event is InputEventKey or not event.pressed:
-		return
-		
-	# Only process if it's the local player's turn
-	if not turn_manager or not turn_manager.is_local_player_turn() or not turn_manager.is_character_turn_active():
-		return
-		
-	# Check for ability shortcuts 1-6
-	var key_code = event.keycode
-	var ability_index = -1
-	
-	if key_code >= KEY_1 and key_code <= KEY_6:
-		ability_index = key_code - KEY_1
-	elif key_code >= KEY_KP_1 and key_code <= KEY_KP_6:
-		ability_index = key_code - KEY_KP_1
-		
-	if ability_index >= 0 and ability_index < ability_buttons.size():
-		_on_ability_button_pressed(ability_index)
-		get_viewport().set_input_as_handled()
-	
-	# ESC to cancel ability targeting
-	elif key_code == KEY_ESCAPE and ability_targeting_mode:
-		# Cancel ability targeting
-		ability_targeting_mode = false
-		selected_ability = null
-		
-		# Clear highlights and show movement range again
-		if grid_manager:
-			grid_manager.clear_movement_highlights()
-			var current_character = turn_manager.get_current_character()
-			if current_character and current_character.resources.get_movement_points() > 0:
-				grid_manager.highlight_movement_range(current_character.grid_position, current_character.resources.get_movement_points(), current_character)
-		
-		if chat_panel:
-			chat_panel.add_system_message("Ability targeting cancelled")
-		
-		get_viewport().set_input_as_handled()
-	
-	# Handle debug keys
-	elif event.keycode == KEY_F1:
-		_debug_print_game_state()
-	elif event.keycode == KEY_F2:
-		_debug_test_movement()
-	elif event.keycode == KEY_F3:
-		_debug_test_damage()
-	elif event.keycode == KEY_F4:
-		_debug_test_enemy_ai()
-	elif event.keycode == KEY_G:
-		_toggle_grid_borders()
-
-func _deferred_multiplayer_initialization() -> void:
-	"""Initialize multiplayer game after ensuring clean state"""
-	# Reset any stuck state flags
-	is_spawning_characters = false
-	player_characters.clear()
-	current_player_id = -1
-	
-	# Clear any existing dynamic UI elements
-	_clear_turn_order_displays()
-	
-	# Wait one more frame to ensure scene is fully ready
-	await get_tree().process_frame
-	
-	_initialize_multiplayer_game()
-
 func _exit_tree() -> void:
 	"""Cleanup when the scene is being destroyed"""
+	# Clean up components
+	if spawn_manager:
+		spawn_manager.clear_existing_characters()
+	if ui_manager:
+		ui_manager.cleanup()
+	if input_handler:
+		input_handler.cleanup()
+	if ability_system:
+		ability_system.cleanup()
 	
-	# Reset spawning flag to prevent issues in next run
-	is_spawning_characters = false
-	
-	# Clear character references
-	for peer_id in player_characters.keys():
-		var character = player_characters[peer_id]
-		if character and is_instance_valid(character):
-			# Disconnect signals to prevent memory leaks
-			if character.health_changed.is_connected(_on_health_changed):
-				character.health_changed.disconnect(_on_health_changed)
-			if character.movement_points_changed.is_connected(_on_movement_points_changed):
-				character.movement_points_changed.disconnect(_on_movement_points_changed)
-			if character.ability_points_changed.is_connected(_on_ability_points_changed):
-				character.ability_points_changed.disconnect(_on_ability_points_changed)
-			if character.character_selected.is_connected(_on_character_selected):
-				character.character_selected.disconnect(_on_character_selected)
-			if character.movement_completed.is_connected(_on_movement_completed):
-				character.movement_completed.disconnect(_on_movement_completed)
-	
-	player_characters.clear()
+	# Reset current player
 	current_player_id = -1
-	
-	# Clear dynamic UI elements
-	_clear_turn_order_displays()
-	
-	# Disconnect grid manager signals
-	if grid_manager and grid_manager.tile_clicked.is_connected(_on_tile_clicked):
-		grid_manager.tile_clicked.disconnect(_on_tile_clicked)
-	
-	# Disconnect turn manager signals
-	if turn_manager:
-		if turn_manager.turn_started.is_connected(_on_turn_started):
-			turn_manager.turn_started.disconnect(_on_turn_started)
-		if turn_manager.turn_ended.is_connected(_on_turn_ended):
-			turn_manager.turn_ended.disconnect(_on_turn_ended)
-	
-	# Disconnect button signals
-	if give_up_button and give_up_button.pressed.is_connected(_on_give_up_pressed):
-		give_up_button.pressed.disconnect(_on_give_up_pressed)
-	
-	if give_up_confirmation_dialog:
-		if give_up_confirmation_dialog.confirmed.is_connected(_on_give_up_confirmed):
-			give_up_confirmation_dialog.confirmed.disconnect(_on_give_up_confirmed)
-		if give_up_confirmation_dialog.canceled.is_connected(_on_give_up_canceled):
-			give_up_confirmation_dialog.canceled.disconnect(_on_give_up_canceled)
 
 func _initialize_systems() -> void:
 	"""Initialize core game systems"""
@@ -198,36 +57,70 @@ func _initialize_systems() -> void:
 	turn_manager.name = "TurnManager"
 	add_child(turn_manager)
 
-func _setup_ui_references() -> void:
-	"""Setup references to UI elements"""
-	if combat_ui:
-		# Get stat display elements
-		hp_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer/HPText")
-		ap_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay/APContainer/APText")
-		mp_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay/MPContainer/MPText")
-		
-		# Get control elements
-		end_turn_button = combat_ui.get_node("UILayer/MainUI/FightControls/ButtonContainer/EndTurnBtn")
-		give_up_button = combat_ui.get_node("UILayer/MainUI/FightControls/ButtonContainer/GiveUpBtn")
-		chat_panel = combat_ui.get_node("UILayer/MainUI/ChatPanel")
-		
-		# Get turn order UI elements
-		turn_order_panel = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel")
-		current_entity_name = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityName")
-		current_entity_hp = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityHP")
-		current_entity_status = combat_ui.get_node("UILayer/MainUI/TurnOrderPanel/CurrentEntity/CurrentEntityContainer/CurrentEntityStatus")
-		
-		# Get confirmation dialog
-		give_up_confirmation_dialog = combat_ui.get_node("UILayer/MainUI/GiveUpConfirmationDialog")
-		
-		# Get ability buttons
-		ability_buttons.clear()
-		for i in range(1, 7):
-			var button: Button = combat_ui.get_node("UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid/Ability" + str(i))
-			if button:
-				ability_buttons.append(button)
-				# Connect button click
-				button.pressed.connect(_on_ability_button_pressed.bind(i - 1))
+func _initialize_components() -> void:
+	"""Initialize all component managers"""
+	# Create spawn manager
+	spawn_manager = SpawnManager.new()
+	spawn_manager.name = "SpawnManager"
+	add_child(spawn_manager)
+	spawn_manager.initialize($CombatArea)
+	
+	# Create UI manager
+	ui_manager = UIManager.new()
+	ui_manager.name = "UIManager"
+	add_child(ui_manager)
+	ui_manager.initialize(combat_ui)
+	
+	# Create ability system
+	ability_system = AbilitySystem.new()
+	ability_system.name = "AbilitySystem"
+	add_child(ability_system)
+	ability_system.initialize(grid_manager, ui_manager, turn_manager)
+	
+	# Create input handler
+	input_handler = InputHandler.new()
+	input_handler.name = "InputHandler"
+	add_child(input_handler)
+	input_handler.initialize(grid_manager, turn_manager, ability_system, ui_manager)
+	
+	# Create network sync manager
+	network_sync_manager = NetworkSyncManager.new()
+	network_sync_manager.name = "NetworkSyncManager"
+	add_child(network_sync_manager)
+	network_sync_manager.initialize(spawn_manager, turn_manager)
+
+func _connect_component_signals() -> void:
+	"""Connect signals between components"""
+	# Spawn manager signals
+	spawn_manager.characters_spawned.connect(_on_characters_spawned)
+	spawn_manager.spawn_completed.connect(_on_spawn_completed)
+	
+	# UI manager signals
+	ui_manager.give_up_requested.connect(_on_give_up_requested)
+	ui_manager.end_turn_requested.connect(_on_end_turn_requested)
+	
+	# Input handler signals
+	input_handler.tile_clicked.connect(_on_tile_clicked)
+	input_handler.ability_shortcut_pressed.connect(_on_ability_shortcut_pressed)
+	input_handler.escape_pressed.connect(_on_escape_pressed)
+	input_handler.debug_key_pressed.connect(_on_debug_key_pressed)
+	
+	# Ability system signals
+	ability_system.ability_used.connect(_on_ability_used)
+	
+	# Turn manager signals
+	turn_manager.turn_started.connect(_on_turn_started)
+	turn_manager.turn_ended.connect(_on_turn_ended)
+	
+	# Network sync signals
+	network_sync_manager.sync_completed.connect(_on_network_sync_completed)
+
+func _deferred_multiplayer_initialization() -> void:
+	"""Initialize multiplayer game after ensuring clean state"""
+	# Wait one more frame to ensure scene is fully ready
+	await get_tree().process_frame
+	
+	_initialize_multiplayer_game()
 
 func _initialize_multiplayer_game() -> void:
 	"""Initialize the multiplayer game based on NetworkManager data"""
@@ -238,273 +131,28 @@ func _initialize_multiplayer_game() -> void:
 	var players = NetworkManager.get_players_list()
 	
 	if NetworkManager.is_host:
-		# Convert PlayerInfo objects to dictionaries for RPC transmission
-		var players_data: Array = []
-		for player_info in players:
-			players_data.append({
-				"peer_id": player_info.peer_id,
-				"player_name": player_info.player_name,
-				"selected_class": player_info.selected_class,
-				"class_levels": player_info.class_levels
-			})
+		# Host initiates character spawning
+		network_sync_manager.initiate_multiplayer_game(players)
 		
-		# Host spawns all characters and broadcasts to all clients
-		_spawn_all_characters.rpc(players_data)
-		
-		# Wait for spawning confirmation from all clients before proceeding
-		await _wait_for_all_characters_spawned(players_data.size())
+		# Wait for spawning to complete
+		await spawn_manager.spawn_completed
 	else:
-		# Joining player - wait for character spawning RPC from host
-		
-		# Wait for characters to be spawned via the host's RPC
-		await _wait_for_all_characters_spawned(players.size())
+		# Joining player - wait for character spawning from host
+		await spawn_manager.spawn_completed
 	
 	# Now connect systems with guaranteed character availability
 	_connect_systems()
 
-func _wait_for_all_characters_spawned(expected_count: int) -> void:
-	"""Wait for all characters to be properly spawned before proceeding"""
-	
-	var max_attempts: int = 50  # 5 seconds at 10 FPS, increased for network latency
-	var attempts: int = 0
-	
-	while attempts < max_attempts:
-		# Check if we have the expected number of valid characters
-		var valid_character_count: int = 0
-		for peer_id in player_characters:
-			var character = player_characters[peer_id]
-			if character and is_instance_valid(character) and character.is_inside_tree():
-				# Additional validation - ensure character has essential properties
-				var character_authority = character.get_multiplayer_authority()
-				if character_authority > 0 and character_authority == peer_id:
-					# Ensure character is properly initialized with stats
-					if character.resources and character.resources.max_health_points > 0 and character.character_type != "":
-						valid_character_count += 1
-		
-		if valid_character_count >= expected_count:
-			# Additional frame wait to ensure everything is settled
-			await get_tree().process_frame
-			return
-		
-		attempts += 1
-		await get_tree().create_timer(0.1).timeout  # Wait 100ms between checks
-
-@rpc("any_peer", "call_remote", "reliable")
-func _request_game_state() -> void:
-	"""Request current game state from host (for late joiners)"""
-	if not NetworkManager.is_host:
-		return
-	
-	var sender_id = multiplayer.get_remote_sender_id()
-	
-	# Send current game state to the requesting player
-	var players = NetworkManager.get_players_list()
-	var players_data: Array = []
-	for player_info in players:
-		players_data.append({
-			"peer_id": player_info.peer_id,
-			"player_name": player_info.player_name,
-			"selected_class": player_info.selected_class,
-			"class_levels": player_info.class_levels
-		})
-	
-	# Get current character states for synchronization
-	var character_states: Dictionary = {}
-	for peer_id in player_characters:
-		var character = player_characters[peer_id]
-		if character and is_instance_valid(character):
-			character_states[peer_id] = character.get_character_state()
-	
-	# Get current turn state
-	var turn_state: Dictionary = {}
-	if turn_manager:
-		turn_state = turn_manager.get_turn_state()
-	
-	# Send comprehensive game state specifically to the requesting player
-	_receive_game_state.rpc_id(sender_id, players_data, character_states, turn_state)
-
-@rpc("authority", "call_local", "reliable")
-func _receive_game_state(players_data: Array, character_states: Dictionary, turn_state: Dictionary) -> void:
-	"""Receive and process game state from host (for late joiners)"""
-	
-	# Spawn all characters first - this already has duplicate protection
-	_spawn_all_characters_internal(players_data)
-	
-	# Wait for characters to be properly spawned using the same validation
-	await _wait_for_all_characters_spawned(players_data.size())
-	
-	# Apply character states
-	for peer_id in character_states:
-		if player_characters.has(peer_id):
-			var character = player_characters[peer_id]
-			if character and is_instance_valid(character):
-				character.set_character_state(character_states[peer_id])
-	
-	# Apply turn state
-	if turn_manager and turn_state.size() > 0:
-		turn_manager.sync_turn_state(turn_state)
-
-@rpc("any_peer", "call_local", "reliable")
-func _spawn_all_characters(players_data: Array) -> void:
-	"""Spawn characters for all players (called by host)"""
-	
-	# Only host should initiate character spawning to prevent conflicts
-	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
-		return
-	
-	# Prevent duplicate spawning
-	if is_spawning_characters:
-		return
-	
-	_spawn_all_characters_internal(players_data)
-
-func _spawn_all_characters_internal(players_data: Array) -> void:
-	"""Internal method to spawn characters (shared by RPC and local calls)"""
-	if is_spawning_characters:
-		return
-	
-	is_spawning_characters = true
-	
-	# Clear any existing characters first to prevent duplicates
-	await _clear_existing_characters()
-	
-	# Extra validation - ensure we're still in a valid state to spawn
-	if not NetworkManager or not NetworkManager.connected:
-		is_spawning_characters = false
-		return
-	
-	for i in range(players_data.size()):
-		var player_data = players_data[i]
-		var position_index = i % starting_positions.size()
-		var start_position = starting_positions[position_index]
-		
-		_spawn_character(player_data.peer_id, player_data.selected_class, start_position)
-	
-	# Spawn enemies after players
-	_spawn_enemies()
-	
-	is_spawning_characters = false
-
-func _clear_existing_characters() -> void:
-	"""Clear any existing characters to prevent duplicates"""
-	
-	for peer_id in player_characters.keys():
-		var character = player_characters[peer_id]
-		if character and is_instance_valid(character):
-					# Disconnect signals before freeing
-			if character.health_changed.is_connected(_on_health_changed):
-				character.health_changed.disconnect(_on_health_changed)
-			if character.movement_points_changed.is_connected(_on_movement_points_changed):
-				character.movement_points_changed.disconnect(_on_movement_points_changed)
-			if character.ability_points_changed.is_connected(_on_ability_points_changed):
-				character.ability_points_changed.disconnect(_on_ability_points_changed)
-			if character.character_selected.is_connected(_on_character_selected):
-				character.character_selected.disconnect(_on_character_selected)
-			if character.movement_completed.is_connected(_on_movement_completed):
-				character.movement_completed.disconnect(_on_movement_completed)
-			
-			character.queue_free()
-	
-	player_characters.clear()
-	
-	# Clear enemies too
-	for enemy in enemy_characters:
-		if enemy and is_instance_valid(enemy):
-			enemy.queue_free()
-	
-	enemy_characters.clear()
-	
-	# Wait a frame to ensure cleanup is complete
-	await get_tree().process_frame
-
-func _spawn_character(peer_id: int, character_class: String, grid_position: Vector2i) -> void:
-	"""Spawn a character for a specific player"""
-	var character_scene: PackedScene
-	
-	# Select the appropriate scene based on class
-	match character_class:
-		"Knight":
-			character_scene = knight_scene
-		"Ranger":
-			character_scene = ranger_scene
-		"Pyromancer":
-			character_scene = pyromancer_scene
-		"Assassin":
-			character_scene = assassin_scene
-		_:
-			character_scene = knight_scene
-	
-	# Instantiate the character
-	var character = character_scene.instantiate() as BaseCharacter
-	character.name = character_class + "_" + str(peer_id)
-	
-	# Set multiplayer authority
-	character.set_multiplayer_authority(peer_id)
-	
-	# Position character
-	character.grid_position = grid_position
-	character.target_grid_position = grid_position
-	
-	# Add to scene
-	$CombatArea.add_child(character)
-	
-	# Store reference
-	player_characters[peer_id] = character
-	
-	# Ensure character renders above movement highlights
-	character.z_index = 2
-
-func _spawn_enemies() -> void:
-	"""Spawn enemy characters for testing"""
-	
-	# Spawn skeletons at predefined positions
-	for i in range(min(1, enemy_spawn_positions.size())):  # Spawn up to 1 skeleton
-		var spawn_position = enemy_spawn_positions[i]
-		_spawn_enemy("Skeleton", spawn_position, i)
-
-func _spawn_enemy(enemy_type: String, grid_position: Vector2i, enemy_id: int) -> void:
-	"""Spawn a single enemy"""
-	var enemy_scene: PackedScene
-	
-	# Select the appropriate enemy scene
-	match enemy_type:
-		"Skeleton":
-			enemy_scene = skeleton_scene
-		_:
-			enemy_scene = skeleton_scene
-	
-	if not enemy_scene:
-		return
-	
-	# Instantiate the enemy
-	var enemy = enemy_scene.instantiate() as BaseCharacter
-	enemy.name = enemy_type + "_" + str(enemy_id)
-	
-	# Set multiplayer authority to host (enemies are controlled by host)
-	enemy.set_multiplayer_authority(1)
-	
-	# Position enemy
-	enemy.grid_position = grid_position
-	enemy.target_grid_position = grid_position
-	
-	# Add to scene
-	$CombatArea.add_child(enemy)
-	
-	# Store reference
-	enemy_characters.append(enemy)
-	
-	# Ensure enemy renders above movement highlights
-	enemy.z_index = 2
-
 func _connect_systems() -> void:
-	"""Connect all systems together"""
+	"""Connect all systems together after characters are spawned"""
 	# Connect grid manager to tilemap
 	if tilemap_layer:
 		grid_manager.set_tilemap_layer(tilemap_layer)
 	
-	# Setup all player characters
+	# Get spawned characters
+	var player_characters = spawn_manager.get_player_characters()
+	var enemy_characters = spawn_manager.get_enemy_characters()
 	
-	# At this point, characters should already be validated by _wait_for_all_characters_spawned
 	if player_characters.size() == 0:
 		return
 	
@@ -549,495 +197,278 @@ func _connect_systems() -> void:
 	if character_list.size() == 0:
 		return
 	
-	# Connect grid manager tile clicks to character movement (only for local player)
-	if grid_manager:
-		grid_manager.tile_clicked.connect(_on_tile_clicked)
-	
 	# Initialize turn manager with all characters
-	if turn_manager and character_list.size() > 0 and end_turn_button and chat_panel:
-		turn_manager.initialize_multiplayer(character_list, end_turn_button, chat_panel)
-		
-		# Connect turn manager signals for UI updates
-		turn_manager.turn_started.connect(_on_turn_started)
-		turn_manager.turn_ended.connect(_on_turn_ended)
+	if turn_manager and character_list.size() > 0:
+		turn_manager.initialize_multiplayer(
+			character_list, 
+			ui_manager.get_end_turn_button(), 
+			ui_manager.get_chat_panel()
+		)
 		
 		# For non-host players, request current turn state from host
 		if not NetworkManager.is_host:
-			_request_turn_sync.rpc_id(1)
+			network_sync_manager.request_sync_as_client()
 		else:
 			# Host immediately updates UI and prepares to start
-			_hide_static_next_entity_panels()
 			_update_turn_order_ui()
 			
 			# Small delay to ensure all clients are ready, then start the first turn
 			await get_tree().create_timer(0.5).timeout
 			
 			# Sync initial turn state to all clients before starting
-			_sync_turn_state.rpc()
+			network_sync_manager.sync_initial_turn_state()
 			
 			# Additional delay for clients to process the sync
 			await get_tree().create_timer(0.2).timeout
 			turn_manager.start_first_turn()
 	
-	# Connect Give up button and confirmation dialog
-	if give_up_button:
-		give_up_button.pressed.connect(_on_give_up_pressed)
-	
-	if give_up_confirmation_dialog:
-		give_up_confirmation_dialog.confirmed.connect(_on_give_up_confirmed)
-		give_up_confirmation_dialog.canceled.connect(_on_give_up_canceled)
-	
 	# Show grid borders by default
 	if grid_manager:
 		grid_manager.show_grid_borders()
-		if chat_panel:
-			chat_panel.add_system_message("Grid borders enabled - Press G to toggle")
+		ui_manager.add_system_message("Grid borders enabled - Press G to toggle")
 
-@rpc("any_peer", "call_remote", "reliable")
-func _request_turn_sync() -> void:
-	"""Request current turn state from host"""
-	if not NetworkManager.is_host or not turn_manager:
-		return
-	
-	var sender_id = multiplayer.get_remote_sender_id()
-	
-	# Send current turn state to the requesting player
-	_sync_turn_state.rpc_id(sender_id)
+func _on_characters_spawned(player_characters: Dictionary, enemy_characters: Array) -> void:
+	"""Handle when characters are spawned"""
+	# Characters are now available in spawn_manager
+	pass
 
-@rpc("any_peer", "call_local", "reliable")
-func _sync_turn_state() -> void:
-	"""Synchronize turn state across all clients"""
-	if not turn_manager:
+func _on_spawn_completed() -> void:
+	"""Handle when spawning is completed"""
+	# Spawning is done, systems can be connected
+	pass
+
+func _on_give_up_requested() -> void:
+	"""Handle give up request from UI"""
+	# Ensure proper cleanup before scene change
+	await _cleanup_before_scene_change()
+	
+	# Return to main menu
+	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+
+func _on_end_turn_requested() -> void:
+	"""Handle end turn request from UI"""
+	# End turn is handled by turn manager which has the button reference
+	pass
+
+func _on_tile_clicked(grid_position: Vector2i) -> void:
+	"""Handle tile click from input handler"""
+	# Check if in ability targeting mode
+	if ability_system.is_in_targeting_mode():
+		ability_system.handle_tile_click(grid_position)
 		return
 	
-	# Only allow host to broadcast turn state to prevent conflicts
-	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
+	# Get current character
+	var current_character = turn_manager.get_current_character()
+	if not current_character:
 		return
 	
-	# Get current turn state from turn manager
-	var turn_state = turn_manager.get_turn_state()
+	# Check if clicking on current character (selection)
+	if grid_position == current_character.grid_position:
+		current_character.character_selected.emit()
+		return
 	
-	# For non-host clients, sync the turn state from the received data
-	if not NetworkManager.is_host:
-		turn_manager.sync_turn_state(turn_state)
+	# Attempt to move character to clicked position
+	var movement_successful = current_character.attempt_move_to(grid_position)
 	
-	# Update turn order UI for all players
-	_hide_static_next_entity_panels()
+	if movement_successful:
+		var player_name = _get_player_name_for_character(current_character)
+		ui_manager.add_combat_message("%s (%s) moved to %s" % [player_name, current_character.character_type, str(grid_position)])
+	else:
+		ui_manager.add_system_message("Cannot move to that position")
+
+func _on_ability_shortcut_pressed(ability_index: int) -> void:
+	"""Handle ability shortcut from input handler"""
+	ability_system.handle_ability_shortcut(ability_index)
+
+func _on_escape_pressed() -> void:
+	"""Handle escape key from input handler"""
+	ability_system.handle_escape_key()
+
+func _on_debug_key_pressed(key: String) -> void:
+	"""Handle debug key presses"""
+	match key:
+		"F1":
+			_debug_print_game_state()
+		"F2":
+			_debug_test_movement()
+		"F3":
+			_debug_test_damage()
+		"F4":
+			_debug_test_enemy_ai()
+		"G":
+			_toggle_grid_borders()
+
+func _on_ability_used(character: BaseCharacter, ability: AbilityComponent, target_position: Vector2i) -> void:
+	"""Handle when an ability is used"""
+	# Update UI after ability use
+	ability_system.update_ability_bar(character)
+
+func _on_turn_started(character: BaseCharacter) -> void:
+	"""Handle when a turn starts"""
+	_update_turn_order_ui()
+	
+	# Update the stat display to show the current character's stats
+	if turn_manager and turn_manager.is_local_player_turn():
+		var current_turn_character = turn_manager.get_current_character()
+		if current_turn_character and not current_turn_character.is_ai_controlled():
+			# Update stat displays
+			ui_manager.update_stats(
+				current_turn_character.resources.current_health_points,
+				current_turn_character.resources.max_health_points,
+				current_turn_character.resources.current_movement_points,
+				current_turn_character.resources.max_movement_points,
+				current_turn_character.resources.current_ability_points,
+				current_turn_character.resources.max_ability_points
+			)
+			
+			# Show movement range
+			if grid_manager and current_turn_character.resources.get_movement_points() > 0:
+				grid_manager.highlight_movement_range(
+					current_turn_character.grid_position, 
+					current_turn_character.resources.get_movement_points(), 
+					current_turn_character
+				)
+			
+			# Update ability bar
+			ability_system.update_ability_bar(current_turn_character)
+		elif current_turn_character and current_turn_character.is_ai_controlled():
+			# Enemy turn
+			if grid_manager:
+				grid_manager.clear_movement_highlights()
+			ui_manager.add_combat_message("Enemy " + current_turn_character.character_type + " is taking their turn...")
+	else:
+		# Not local player's turn
+		if grid_manager:
+			grid_manager.clear_movement_highlights()
+		ability_system.disable_all_abilities()
+
+func _on_turn_ended(character: BaseCharacter) -> void:
+	"""Handle when a turn ends"""
+	# Turn order UI will be updated when next turn starts
+	pass
+
+func _on_network_sync_completed() -> void:
+	"""Handle when network sync is completed"""
 	_update_turn_order_ui()
 	
 	# Update current character display
 	var current_character = turn_manager.get_current_character()
-	if current_character:
-		_update_current_entity_display(current_character)
-		
-		# Update stat displays if it's the local player's turn
-		if turn_manager.is_local_player_turn():
-			if hp_text:
-				hp_text.text = "%d/%d" % [current_character.resources.current_health_points, current_character.resources.max_health_points]
-			if mp_text:
-				mp_text.text = "%d/%d" % [current_character.resources.current_movement_points, current_character.resources.max_movement_points]
-			if ap_text:
-				ap_text.text = "%d/%d" % [current_character.resources.current_ability_points, current_character.resources.max_ability_points]
+	if current_character and turn_manager.is_local_player_turn():
+		ui_manager.update_stats(
+			current_character.resources.current_health_points,
+			current_character.resources.max_health_points,
+			current_character.resources.current_movement_points,
+			current_character.resources.max_movement_points,
+			current_character.resources.current_ability_points,
+			current_character.resources.max_ability_points
+		)
 
 func _on_health_changed(current: int, maximum: int) -> void:
 	"""Update HP display when character health changes"""
-	# Only update UI for the local player's character
-	var sender_character = get_current_player_character()
-	if not sender_character:
-		return
-	
-	# Update HP text only if this is the local player's character
-	if hp_text:
-		hp_text.text = "%d/%d" % [current, maximum]
+	ui_manager.update_hp_display(current, maximum)
 
 func _on_movement_points_changed(current: int, maximum: int) -> void:
-	## Update MP display when movement points change
+	"""Update MP display when movement points change"""
+	ui_manager.update_mp_display(current, maximum)
 	
-	# Only update UI for the local player's character
-	var sender_character = get_current_player_character()
-	if not sender_character:
-		return
-	
-	# Update MP text only if this is the local player's character
-	if mp_text:
-		mp_text.text = "%d/%d" % [current, maximum]
-	
-	# Update movement highlights only if it's the local player's turn AND the turn is actually active
-	# This prevents highlights from flashing during turn transitions when resources are refreshed
-	var current_turn_character: BaseCharacter = null
+	# Update movement highlights
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current > 0:
-		current_turn_character = turn_manager.get_current_character()
-		if current_turn_character:
-			# Double-check that this is not an AI character
-			if current_turn_character.is_ai_controlled():
-				return  # Don't update movement highlights for AI characters
-			
-			grid_manager.highlight_movement_range(current_turn_character.grid_position, current, current_turn_character)
+		var current_character = turn_manager.get_current_character()
+		if current_character and not current_character.is_ai_controlled():
+			grid_manager.highlight_movement_range(current_character.grid_position, current, current_character)
 	elif grid_manager:
-		# Clear highlights if no movement points remaining or not local player's turn or turn not active
 		grid_manager.clear_movement_highlights()
-		if chat_panel and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
-			current_turn_character = turn_manager.get_current_character()
-			if current_turn_character and not current_turn_character.is_ai_controlled():
-				chat_panel.add_system_message("No movement points remaining - Movement range cleared")
+		if turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
+			ui_manager.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_ability_points_changed(current: int, maximum: int) -> void:
-	## Update AP display when ability points change
-	
-	# Only update UI for the local player's character
-	var sender_character = get_current_player_character()
-	if not sender_character:
-		return
-	
-	# Update AP text only if this is the local player's character
-	if ap_text:
-		ap_text.text = "%d/%d" % [current, maximum]
+	"""Update AP display when ability points change"""
+	ui_manager.update_ap_display(current, maximum)
 
 func _on_character_selected() -> void:
 	"""Handle when the character is selected"""
-	# Only highlight movement for the local player's turn and when the turn is actually active
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active():
-		var current_turn_character = turn_manager.get_current_character()
-		if current_turn_character:
-			# Double-check that this is not an AI character
-			if current_turn_character.is_ai_controlled():
-				return  # Don't show movement highlights for AI characters
-			
-			# Show movement range when selected
-			grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
-			
-			if chat_panel:
-				chat_panel.add_system_message(current_turn_character.character_type + " selected - Movement range highlighted")
-
-func _on_tile_clicked(grid_position: Vector2i) -> void:
-	"""Handle when a tile is clicked"""
-	
-	# Only allow input if it's the local player's turn AND the current character is not AI-controlled
-	var current_turn_character: BaseCharacter = null
-	if not turn_manager or not turn_manager.is_character_turn_active() or not turn_manager.is_local_player_turn():
-		if turn_manager and turn_manager.is_character_turn_active() and not turn_manager.is_local_player_turn():
-			current_turn_character = turn_manager.get_current_character()
-			if current_turn_character and chat_panel:
-				var player_name = _get_player_name_for_character(current_turn_character)
-				chat_panel.add_system_message("It's " + player_name + "'s turn, not yours!")
-		return
-	
-	# Get the character whose turn it is
-	current_turn_character = turn_manager.get_current_character()
-	if not current_turn_character:
-		return
-	
-	# IMPORTANT: Block input if the current character is AI-controlled (enemy)
-	if current_turn_character.is_ai_controlled():
-		if chat_panel:
-			chat_panel.add_system_message("Cannot control enemy characters - AI is taking its turn")
-		return
-	
-	# Check if we're in ability targeting mode
-	if ability_targeting_mode and selected_ability:
-		# Store ability name before await in case selected_ability becomes null
-		var ability_name = selected_ability.ability_name
-		
-		# Attempt to use the ability
-		var ability_successful = await selected_ability.use_ability(grid_position)
-		
-		if ability_successful:
-			if chat_panel:
-				var player_name = _get_player_name_for_character(current_turn_character)
-				chat_panel.add_combat_message("%s used %s!" % [player_name, ability_name])
-			
-			# Update UI after ability use
-			_update_ability_bar(current_turn_character)
-			
-			# Update stat displays
-			if hp_text:
-				hp_text.text = "%d/%d" % [current_turn_character.resources.current_health_points, current_turn_character.resources.max_health_points]
-			if ap_text:
-				ap_text.text = "%d/%d" % [current_turn_character.resources.current_ability_points, current_turn_character.resources.max_ability_points]
-		else:
-			if chat_panel:
-				chat_panel.add_system_message("Invalid target for " + ability_name)
-		
-		# Exit ability targeting mode
-		ability_targeting_mode = false
-		selected_ability = null
-		
-		# Clear highlights and show movement range again if character has MP
-		if grid_manager:
-			grid_manager.clear_movement_highlights()
-			if current_turn_character.resources.get_movement_points() > 0:
-				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
-		return
-	
-	# Check if clicking on current character (selection)
-	if grid_position == current_turn_character.grid_position:
-		current_turn_character.character_selected.emit()
-		return
-	
-	# Attempt to move character to clicked position
-	var movement_successful = current_turn_character.attempt_move_to(grid_position)
-	
-	if movement_successful:
-		if chat_panel:
-			var player_name = _get_player_name_for_character(current_turn_character)
-			chat_panel.add_combat_message("%s (%s) moved to %s" % [player_name, current_turn_character.character_type, str(grid_position)])
-	else:
-		if chat_panel:
-			chat_panel.add_system_message("Cannot move to that position")
+		var current_character = turn_manager.get_current_character()
+		if current_character and not current_character.is_ai_controlled():
+			grid_manager.highlight_movement_range(
+				current_character.grid_position, 
+				current_character.resources.get_movement_points(), 
+				current_character
+			)
+			ui_manager.add_system_message(current_character.character_type + " selected - Movement range highlighted")
 
 func _on_movement_completed(new_position: Vector2i) -> void:
 	"""Handle when the character's movement is completed"""
-	# Only update movement highlights if it's the local player's turn and the turn is actually active
 	if grid_manager and turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active():
-		var current_turn_character = turn_manager.get_current_character()
-		if current_turn_character:
-			# Double-check that this is not an AI character
-			if current_turn_character.is_ai_controlled():
-				return  # Don't update movement highlights for AI characters
-			
-			# Immediately update movement range from the new position
-			grid_manager.highlight_movement_range(new_position, current_turn_character.resources.get_movement_points(), current_turn_character)
-			if chat_panel:
-				chat_panel.add_system_message("Movement range updated from new position: " + str(new_position))
-
-func _on_turn_started(_character: BaseCharacter) -> void:
-	"""Handle when a turn starts - update turn order UI and display current character stats"""
-	_update_turn_order_ui()
-	
-	# Update the stat display to show the current character's stats (if it's the local player's turn AND not AI)
-	if turn_manager and turn_manager.is_local_player_turn():
-		var current_turn_character = turn_manager.get_current_character()
-		if current_turn_character:
-			# Check if the current character is AI-controlled (enemy)
-			if current_turn_character.is_ai_controlled():
-				# It's an enemy turn - clear movement highlights and don't update player UI
-				if grid_manager:
-					grid_manager.clear_movement_highlights()
-				if chat_panel:
-					chat_panel.add_combat_message("Enemy " + current_turn_character.character_type + " is taking their turn...")
-				return
-			
-			# It's a real player turn - update UI normally
-			# Manually update the stat displays to show the current character's stats
-			if hp_text:
-				hp_text.text = "%d/%d" % [current_turn_character.resources.current_health_points, current_turn_character.resources.max_health_points]
-			if mp_text:
-				mp_text.text = "%d/%d" % [current_turn_character.resources.current_movement_points, current_turn_character.resources.max_movement_points]
-			if ap_text:
-				ap_text.text = "%d/%d" % [current_turn_character.resources.current_ability_points, current_turn_character.resources.max_ability_points]
-			
-			# Show movement range for the current character
-			if grid_manager and current_turn_character.resources.get_movement_points() > 0:
-				grid_manager.highlight_movement_range(current_turn_character.grid_position, current_turn_character.resources.get_movement_points(), current_turn_character)
-			
-			# Update ability bar for the current character
-			_update_ability_bar(current_turn_character)
-	else:
-		# If it's not the local player's turn, clear movement highlights
-		if grid_manager:
-			grid_manager.clear_movement_highlights()
-		
-		# Disable all ability buttons when it's not the player's turn
-		for button in ability_buttons:
-			button.disabled = true
-			button.modulate = Color(0.5, 0.5, 0.5, 1.0)
-
-func _on_turn_ended(_character: BaseCharacter) -> void:
-	"""Handle when a turn ends"""
-	pass  # Turn order UI will be updated when next turn starts
+		var current_character = turn_manager.get_current_character()
+		if current_character and not current_character.is_ai_controlled():
+			grid_manager.highlight_movement_range(new_position, current_character.resources.get_movement_points(), current_character)
+			ui_manager.add_system_message("Movement range updated from new position: " + str(new_position))
 
 func _update_turn_order_ui() -> void:
-	"""Update the turn order UI to show all characters in initiative order"""
-	if not turn_manager or not turn_order_panel:
+	"""Update the turn order UI"""
+	if not turn_manager:
 		return
 	
-	# Safety check: ensure we have characters before updating UI
-	var characters_in_order = turn_manager.get_characters_in_turn_order()
-	if characters_in_order.size() == 0:
-		# Defer the update to next frame to allow character initialization to complete
-		call_deferred("_update_turn_order_ui")
-		return
-	
-	# Clear existing dynamic displays
-	_clear_turn_order_displays()
-	
-	# Hide the static NextEntity panels since we're creating dynamic ones
-	_hide_static_next_entity_panels()
-	
-	# Get all characters in turn order
+	var characters = turn_manager.get_characters_in_turn_order()
 	var current_character = turn_manager.get_current_character()
-	var current_character_index = turn_manager.current_character_index
+	var current_index = turn_manager.current_character_index
 	
-	for i in range(characters_in_order.size()):
-		var character = characters_in_order[i]
-		if character and is_instance_valid(character):
-			pass
-		else:
-			return  # Exit if we have invalid characters
+	ui_manager.update_turn_order(characters, current_character, current_index, turn_manager)
+
+func _cleanup_before_scene_change() -> void:
+	"""Perform cleanup before changing scenes"""
+	# Disconnect from multiplayer if connected
+	if NetworkManager and NetworkManager.connected:
+		NetworkManager.disconnect_from_network()
 	
-	# Update the main current entity display
-	if current_character and is_instance_valid(current_character):
-		_update_current_entity_display(current_character)
+	# Clear game state
+	current_player_id = -1
 	
-	# Create displays for all characters in turn order
-	for i in range(characters_in_order.size()):
-		var character = characters_in_order[i]
-		if not character or not is_instance_valid(character):
-			continue
-			
-		var is_current = (i == current_character_index and turn_manager.is_turn_active)
-		
-		# Skip the current character as it's already shown in the CurrentEntity panel
-		if is_current:
-			continue
-			
-		var character_display = _create_character_turn_display(character, i, current_character_index)
-		turn_order_panel.add_child(character_display)
-		turn_order_displays.append(character_display)
+	# Wait a frame to ensure cleanup is processed
+	await get_tree().process_frame
+
+func get_current_player_character() -> BaseCharacter:
+	"""Get the current player's character"""
+	if current_player_id != -1:
+		var player_characters = spawn_manager.get_player_characters()
+		if player_characters.has(current_player_id):
+			return player_characters[current_player_id]
+	return null
+
+func get_all_characters() -> Array[BaseCharacter]:
+	"""Get all characters (players and enemies)"""
+	return spawn_manager.get_all_characters()
+
+func get_character_by_peer_id(peer_id: int) -> BaseCharacter:
+	"""Get character by peer ID"""
+	var player_characters = spawn_manager.get_player_characters()
+	return player_characters.get(peer_id, null)
+
+func get_grid_manager() -> GridManager:
+	"""Get reference to the grid manager"""
+	return grid_manager
+
+func get_turn_manager() -> TurnManager:
+	"""Get reference to the turn manager"""
+	return turn_manager
 
 func _get_player_name_for_character(character: BaseCharacter) -> String:
 	"""Get a display name for the character's player"""
 	var authority = character.get_multiplayer_authority()
 	
-	# Check NetworkManager for player name
 	if NetworkManager and NetworkManager.connected:
 		var players = NetworkManager.get_players_list()
 		for player_info in players:
 			if player_info.peer_id == authority:
 				return player_info.player_name
 	
-	# Fallback names
 	if authority == 1:
 		return "Host"
 	else:
 		return "Player " + str(authority)
 
-func _clear_turn_order_displays() -> void:
-	"""Clear all dynamic turn order displays"""
-	# Disconnect health signals
-	for character in turn_order_hp_labels:
-		if character and is_instance_valid(character) and character.resources:
-			if character.resources.health_changed.is_connected(_on_character_health_changed):
-				character.resources.health_changed.disconnect(_on_character_health_changed)
-	
-	for display in turn_order_displays:
-		if display and is_instance_valid(display):
-			display.queue_free()
-	turn_order_displays.clear()
-	turn_order_hp_labels.clear()
-
-func _hide_static_next_entity_panels() -> void:
-	"""Hide the static NextEntity panels since we're using dynamic ones"""
-	if turn_order_panel:
-		var next_entity1 = turn_order_panel.get_node_or_null("NextEntity1")
-		var next_entity2 = turn_order_panel.get_node_or_null("NextEntity2")
-		var next_entity3 = turn_order_panel.get_node_or_null("NextEntity3")
-		
-		if next_entity1:
-			next_entity1.visible = false
-		if next_entity2:
-			next_entity2.visible = false
-		if next_entity3:
-			next_entity3.visible = false
-
-func _update_current_entity_display(character: BaseCharacter) -> void:
-	"""Update the main current entity display"""
-	if current_entity_name:
-		var player_name = _get_player_name_for_character(character)
-		current_entity_name.text = player_name + " (" + character.character_type + ")"
-	
-	if current_entity_hp:
-		current_entity_hp.text = "HP: %d/%d" % [character.resources.current_health_points, character.resources.max_health_points]
-	
-	if current_entity_status:
-		# Check if it's the local player's turn
-		var is_local_turn = turn_manager.is_local_player_turn()
-		if is_local_turn:
-			current_entity_status.text = "YOUR TURN"
-			current_entity_status.modulate = Color.GREEN
-		else:
-			current_entity_status.text = "WAITING"
-			current_entity_status.modulate = Color.YELLOW
-
-func _create_character_turn_display(character: BaseCharacter, turn_index: int, current_index: int) -> Control:
-	"""Create a UI display for a character in the turn order"""
-	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(130, 40)
-	
-	var container = VBoxContainer.new()
-	container.anchors_preset = Control.PRESET_FULL_RECT
-	container.offset_left = 4
-	container.offset_top = 4
-	container.offset_right = -4
-	container.offset_bottom = -4
-	panel.add_child(container)
-	
-	var name_label = Label.new()
-	var player_name = _get_player_name_for_character(character)
-	name_label.text = player_name + " (" + character.character_type + ")"
-	name_label.add_theme_font_size_override("font_size", 10)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	container.add_child(name_label)
-	
-	var hp_label = Label.new()
-	hp_label.text = "HP: %d/%d" % [character.resources.current_health_points, character.resources.max_health_points]
-	hp_label.add_theme_font_size_override("font_size", 8)
-	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	container.add_child(hp_label)
-	
-	# Store HP label reference and connect to health changes
-	turn_order_hp_labels[character] = hp_label
-	if character.resources:
-		character.resources.health_changed.connect(_on_character_health_changed.bind(character))
-	
-	var init_label = Label.new()
-	init_label.text = "Init: %d" % character.current_initiative
-	init_label.add_theme_font_size_override("font_size", 8)
-	init_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	container.add_child(init_label)
-	
-	# Color code based on turn position
-	if turn_index == current_index + 1:
-		# Next to act
-		panel.modulate = Color(1.0, 1.0, 0.7)  # Light yellow
-	elif turn_index > current_index:
-		# Upcoming
-		panel.modulate = Color(0.9, 0.9, 0.9)  # Light gray
-	else:
-		# Already acted this round
-		panel.modulate = Color(0.7, 0.7, 0.7)  # Darker gray
-	
-	return panel
-
-func _on_character_health_changed(current: int, maximum: int, character: BaseCharacter) -> void:
-	"""Update HP display in turn order when a character's health changes"""
-	if character in turn_order_hp_labels:
-		var hp_label = turn_order_hp_labels[character]
-		if hp_label and is_instance_valid(hp_label):
-			hp_label.text = "HP: %d/%d" % [current, maximum]
-
-func get_current_player_character() -> BaseCharacter:
-	"""Get the current player's character"""
-	if current_player_id != -1 and player_characters.has(current_player_id):
-		return player_characters[current_player_id]
-	return null
-
-func get_all_characters() -> Array[BaseCharacter]:
-	"""Get all characters (players and enemies)"""
-	var characters: Array[BaseCharacter] = []
-	# Add player characters
-	for character in player_characters.values():
-		characters.append(character)
-	# Add enemy characters
-	for enemy in enemy_characters:
-		characters.append(enemy)
-	return characters
-
-func get_character_by_peer_id(peer_id: int) -> BaseCharacter:
-	"""Get character by peer ID"""
-	return player_characters.get(peer_id, null)
-
-
+# Debug functions
 func _debug_print_game_state() -> void:
 	"""Debug function to print current game state"""
 	pass
@@ -1046,7 +477,7 @@ func _debug_test_movement() -> void:
 	"""Debug function to test movement"""
 	var current_character = get_current_player_character()
 	if current_character:
-		var test_position: Vector2i = Vector2i(current_character.grid_position.x + 1, current_character.grid_position.y)
+		var test_position = Vector2i(current_character.grid_position.x + 1, current_character.grid_position.y)
 		current_character.attempt_move_to(test_position)
 
 func _debug_test_damage() -> void:
@@ -1057,171 +488,14 @@ func _debug_test_damage() -> void:
 
 func _debug_test_enemy_ai() -> void:
 	"""Debug function to test enemy AI"""
-	if enemy_characters.size() == 0:
-		return
-	
-	# Force test AI logic for first enemy
-	var enemy = enemy_characters[0]
-	if enemy and enemy.has_method("start_ai_turn"):
-		enemy.start_ai_turn()
-		if chat_panel:
-			chat_panel.add_system_message("DEBUG: Forced AI turn for " + enemy.character_type)
+	var enemy_characters = spawn_manager.get_enemy_characters()
+	if enemy_characters.size() > 0:
+		var enemy = enemy_characters[0]
+		if enemy and enemy.has_method("start_ai_turn"):
+			enemy.start_ai_turn()
+			ui_manager.add_system_message("DEBUG: Forced AI turn for " + enemy.character_type)
 
 func _toggle_grid_borders() -> void:
 	"""Debug function to toggle grid border visibility"""
 	if grid_manager:
 		grid_manager.toggle_grid_borders()
-
-func _on_give_up_pressed() -> void:
-	"""Handle Give up button press - show confirmation dialog"""
-	if give_up_confirmation_dialog:
-		give_up_confirmation_dialog.popup_centered()
-		if chat_panel:
-			chat_panel.add_system_message("Give up confirmation dialog opened")
-
-func _on_give_up_confirmed() -> void:
-	"""Handle Give up confirmation - return to main menu"""
-	
-	# Add a system message before leaving
-	if chat_panel:
-		chat_panel.add_combat_message("Giving up and returning to main menu...")
-	
-	# Ensure proper cleanup before scene change
-	await _cleanup_before_scene_change()
-	
-	# Return to main menu
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
-
-func _on_give_up_canceled() -> void:
-	"""Handle Give up cancellation - close dialog and continue playing"""
-	if chat_panel:
-		chat_panel.add_system_message("Give up canceled - continuing the fight!")
-
-func _cleanup_before_scene_change() -> void:
-	"""Perform cleanup before changing scenes"""
-	
-	# Reset spawning flag
-	is_spawning_characters = false
-	
-	# Disconnect from multiplayer if connected
-	if NetworkManager and NetworkManager.connected:
-		NetworkManager.disconnect_from_network()
-	
-	# Clear game state
-	player_characters.clear()
-	current_player_id = -1
-	
-	# Clear dynamic UI elements
-	_clear_turn_order_displays()
-	
-	# Wait a frame to ensure cleanup is processed
-	await get_tree().process_frame
-
-func get_grid_manager() -> GridManager:
-	"""Get reference to the grid manager"""
-	return grid_manager
-
-func get_turn_manager() -> TurnManager:
-	"""Get reference to the turn manager"""
-	return turn_manager
-
-func _update_ability_bar(character: BaseCharacter) -> void:
-	"""Update the ability bar to show the current character's abilities"""
-	if ability_buttons.is_empty():
-		return
-	
-	# Clear ability targeting mode
-	ability_targeting_mode = false
-	selected_ability = null
-	
-	# Get all ability components from the character
-	var abilities: Array[Node] = character.get_children().filter(func(child): return child is AbilityComponent)
-	
-	# Update each button
-	for i in range(ability_buttons.size()):
-		var button: Button = ability_buttons[i]
-		
-		if i < abilities.size():
-			var ability: AbilityComponent = abilities[i]
-			# Show ability
-			button.visible = true
-			
-			# Format button text with AP cost and cooldown
-			var button_text = ability.ability_name + "\n"
-			button_text += "AP: " + str(ability.ap_cost)
-			
-			# Show cooldown if active
-			if ability.current_cooldown > 0:
-				button_text += " (CD: " + str(ability.current_cooldown) + ")"
-			
-			button.text = button_text
-			
-			# Update button state based on availability
-			# Check basic requirements (cooldown and AP)
-			var can_use: bool = ability.current_cooldown == 0 and character.resources.current_ability_points >= ability.ap_cost
-			button.disabled = not can_use
-			
-			# Store ability reference in button metadata
-			button.set_meta("ability", ability)
-			
-			# Update visual state
-			if ability.current_cooldown > 0:
-				# On cooldown - show red tint
-				button.modulate = Color(1.0, 0.5, 0.5, 1.0)
-			elif character.resources.current_ability_points < ability.ap_cost:
-				# Not enough AP - show blue tint
-				button.modulate = Color(0.5, 0.5, 1.0, 1.0)
-			elif not can_use:
-				# Other reason - grey out
-				button.modulate = Color(0.5, 0.5, 0.5, 1.0)
-			else:
-				# Can use - normal color
-				button.modulate = Color.WHITE
-		else:
-			# Hide unused buttons
-			button.visible = false
-			button.set_meta("ability", null)
-
-func _on_ability_button_pressed(button_index: int) -> void:
-	"""Handle ability button press"""
-	if button_index >= ability_buttons.size():
-		return
-		
-	var button: Button = ability_buttons[button_index]
-	if not button.visible or button.disabled:
-		return
-		
-	var ability: AbilityComponent = button.get_meta("ability")
-	if not ability:
-		return
-		
-	# Enter ability targeting mode
-	ability_targeting_mode = true
-	selected_ability = ability
-	
-	# Clear any existing movement highlights
-	if grid_manager:
-		grid_manager.clear_movement_highlights()
-		
-	# Show ability range
-	var current_character = turn_manager.get_current_character()
-	if current_character and grid_manager:
-		_show_ability_range(current_character, ability)
-		
-	if chat_panel:
-		chat_panel.add_system_message("Select a target for " + ability.ability_name)
-
-func _show_ability_range(character: BaseCharacter, ability: AbilityComponent) -> void:
-	"""Show the range for an ability using blue highlights"""
-	if not grid_manager:
-		return
-		
-	# Use the generic show_range_preview function for ability ranges
-	grid_manager.show_range_preview(
-		character.grid_position,
-		ability.range,
-		Color(0.2, 0.5, 1.0, 0.5),  # Blue color for abilities
-		true,  # Include entities (abilities target characters)
-		"tiles",  # Highlight target tile on hover
-		null  # No moving character for ability targeting
-	) 
