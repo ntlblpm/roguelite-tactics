@@ -485,7 +485,7 @@ func heal(amount: int) -> void:
 func _handle_death() -> void:
 	"""Handle character death - override in subclasses for custom death messages"""
 	is_dead = true
-	_play_animation(GameConstants.DIE_ANIMATION_PREFIX)
+	_play_animation_synchronized.rpc(GameConstants.DIE_ANIMATION_PREFIX)
 
 func get_stats_summary() -> String:
 	"""Get a formatted string of current character stats"""

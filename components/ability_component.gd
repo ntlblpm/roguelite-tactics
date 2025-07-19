@@ -234,12 +234,13 @@ func _execute_damage_with_animation(target_paths: Array[NodePath], damage_amount
 			# Apply damage directly to resources
 			target.resources.take_damage(damage_amount)
 			
-			# Play damage animation synchronized across all clients
-			target._play_animation_synchronized.rpc(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
-			
-			# Handle death if needed
+			# Check if target died from this damage
 			if target.resources.get_health_stats().current <= 0:
+				# Handle death (which will play death animation)
 				target._handle_death()
+			else:
+				# Only play damage animation if target survives
+				target._play_animation_synchronized.rpc(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
 	
 	# Emit signal with reconstructed targets array
 	var targets: Array[BaseCharacter] = []
