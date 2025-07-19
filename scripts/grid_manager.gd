@@ -251,6 +251,13 @@ func show_range_preview(origin: Vector2i, range: int, color: Color, include_enti
 	for pos in valid_positions:
 		if pos != origin:
 			movement_highlights.append(pos)
+	
+	# Immediately update tile preview if in tiles mode
+	if preview_type == "tiles":
+		var mouse_grid_pos: Vector2i = world_to_grid(get_global_mouse_position())
+		if mouse_grid_pos in movement_highlights:
+			current_hovered_tile = mouse_grid_pos
+			_update_tile_preview(mouse_grid_pos)
 
 func _create_range_highlight_tile(grid_position: Vector2i, color: Color) -> void:
 	"""Create a visual highlight at a grid position with specified color"""
