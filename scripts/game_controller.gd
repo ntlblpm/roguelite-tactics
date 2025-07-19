@@ -258,6 +258,10 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 	if not current_character:
 		return
 	
+	# Direct turn check - only allow movement during local player's turn
+	if not turn_manager.is_local_player_turn():
+		return
+	
 	# Check if clicking on current character (selection)
 	if grid_position == current_character.grid_position:
 		current_character.character_selected.emit()
@@ -443,34 +447,8 @@ func _get_player_name_for_character(character: BaseCharacter) -> String:
 	else:
 		return "Player " + str(authority)
 
-# Debug functions
-func _debug_print_game_state() -> void:
-	"""Debug function to print current game state"""
-	pass
-
-func _debug_test_movement() -> void:
-	"""Debug function to test movement"""
-	var current_character = get_current_player_character()
-	if current_character:
-		var test_position = Vector2i(current_character.grid_position.x + 1, current_character.grid_position.y)
-		current_character.attempt_move_to(test_position)
-
-func _debug_test_damage() -> void:
-	"""Debug function to test damage application"""
-	var current_character = get_current_player_character()
-	if current_character:
-		current_character.apply_direct_damage(10)
-
-func _debug_test_enemy_ai() -> void:
-	"""Debug function to test enemy AI"""
-	var enemy_characters = spawn_manager.get_enemy_characters()
-	if enemy_characters.size() > 0:
-		var enemy = enemy_characters[0]
-		if enemy and enemy.has_method("start_ai_turn"):
-			enemy.start_ai_turn()
-			ui_manager.add_system_message("DEBUG: Forced AI turn for " + enemy.character_type)
 
 func _toggle_grid_borders() -> void:
-	"""Debug function to toggle grid border visibility"""
+	"""Toggle grid border visibility"""
 	if grid_manager:
 		grid_manager.toggle_grid_borders()

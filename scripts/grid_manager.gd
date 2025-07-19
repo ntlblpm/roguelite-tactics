@@ -385,32 +385,6 @@ func _input(event: InputEvent) -> void:
 				# Clear preview if hovering outside range
 				_clear_path_highlights()
 	
-	# Debug keyboard shortcuts for testing pathfinding
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_T:
-				# Test pathfinding validation with keyboard shortcut
-				_run_pathfinding_tests()
-			KEY_R:
-				# Refresh pathfinding grid
-				refresh_pathfinding_grid()
-			KEY_I:
-				# Get tile info for position under mouse
-				var mouse_grid_pos = world_to_grid(get_global_mouse_position())
-				debug_print_tile_info(mouse_grid_pos)
-
-func _run_pathfinding_tests() -> void:
-	"""Run a series of pathfinding tests to validate the fixes"""
-	
-	# Test 1: Valid path on walkable terrain
-	debug_test_pathfinding(Vector2i(0, 0), Vector2i(3, 3))
-	
-	# Test 2: Try to path to a known blocked terrain
-	# We'll test some positions that should be blocked based on the tileset
-	debug_test_pathfinding(Vector2i(0, 0), Vector2i(-5, -5))
-	
-	# Test 3: Try a longer path that might go through blocked terrain
-	debug_test_pathfinding(Vector2i(-3, -3), Vector2i(5, 5))
 
 func find_path(from: Vector2i, to: Vector2i, max_cost: int = -1, moving_character: BaseCharacter = null) -> Array[Vector2i]:
 	"""Find a path from one position to another using flood-fill pathfinding"""
@@ -520,14 +494,6 @@ func get_grid_bounds() -> Rect2i:
 	var half_width: int = grid_width / 2
 	var half_height: int = grid_height / 2
 	return Rect2i(-half_width, -half_height, grid_width, grid_height)
-
-func debug_print_tile_info(grid_position: Vector2i) -> void:
-	"""Debug function to print information about a tile"""
-	pass
-
-func debug_test_pathfinding(from: Vector2i, to: Vector2i) -> void:
-	"""Debug function to test pathfinding between two positions"""
-	pass
 
 func show_grid_borders() -> void:
 	"""Display borders on all valid grid tiles"""

@@ -207,8 +207,6 @@ func _end_current_turn() -> void:
 	if chat_panel:
 		var player_name = _get_player_name_for_character(current_character)
 		chat_panel.add_combat_message("%s (%s) ends their turn - Resources refreshed!" % [player_name, current_character.character_type])
-		# Debug: Log that this was a button-based turn end
-		chat_panel.add_system_message("Debug: Player turn ended via button")
 	
 	# End the character's turn (this will refresh their resources)
 	current_character.end_turn()
@@ -241,9 +239,6 @@ func _advance_to_next_turn() -> void:
 	if chat_panel:
 		var player_name = _get_player_name_for_character(current_character)
 		chat_panel.add_combat_message("%s (%s) ends their turn - Resources refreshed!" % [player_name, current_character.character_type])
-		# Debug: Log that this was a signal-based turn end
-		if current_character.is_ai_controlled():
-			chat_panel.add_system_message("Debug: AI turn ended via signal")
 	
 	# NOTE: Don't call current_character.end_turn() here - it was already called by the character
 	# that emitted the signal, which is what triggered this method
@@ -362,10 +357,6 @@ func get_turn_summary() -> String:
 		current_character.character_type,
 		current_character.get_stats_summary()
 	]
-
-func debug_print_turn_state() -> void:
-	"""Debug function to print current turn state"""
-	pass
 
 func get_turn_state() -> Dictionary:
 	"""Get current turn state for synchronization"""

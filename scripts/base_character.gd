@@ -163,18 +163,15 @@ func _on_turn_started(character: BaseCharacter) -> void:
 	if character == self:
 		is_current_turn = true
 		_apply_current_turn_material()
-		_debug_print_material_change("CURRENT TURN")
 	else:
 		is_current_turn = false
 		_apply_default_material()
-		_debug_print_material_change("DEFAULT")
 
 func _on_turn_ended(character: BaseCharacter) -> void:
 	"""Handle when a turn ends"""
 	if character == self:
 		is_current_turn = false
 		_apply_default_material()
-		_debug_print_material_change("DEFAULT (turn ended)")
 
 func _apply_default_material() -> void:
 	"""Apply the default outline material"""
@@ -185,14 +182,6 @@ func _apply_current_turn_material() -> void:
 	"""Apply the current turn outline material"""
 	if animated_sprite and current_turn_material:
 		animated_sprite.material = current_turn_material
-
-func _debug_print_material_change(reason: String) -> void:
-	"""Debug print for material changes (can be disabled for production)"""
-	if OS.is_debug_build():
-		var material_name = "NONE"
-		if animated_sprite and animated_sprite.material:
-			material_name = animated_sprite.material.resource_path.get_file()
-		print("%s (%s): Material set to %s - Reason: %s" % [character_type, name, material_name, reason])
 
 func set_material_override(material: ShaderMaterial) -> void:
 	"""Manually set a material override (useful for special effects)"""
@@ -205,28 +194,6 @@ func get_current_material() -> ShaderMaterial:
 		return animated_sprite.material as ShaderMaterial
 	return null
 
-func refresh_materials() -> void:
-	"""Force refresh materials - useful for debugging or after material changes"""
-	_initialize_materials()
-	
-	# Apply appropriate material based on current turn state
-	if is_current_turn:
-		_apply_current_turn_material()
-	else:
-		_apply_default_material()
-	
-	_debug_print_material_change("REFRESH")
-
-func get_material_status() -> Dictionary:
-	"""Get current material status for debugging"""
-	return {
-		"is_current_turn": is_current_turn,
-		"has_default_material": default_material != null,
-		"has_current_turn_material": current_turn_material != null,
-		"active_material_path": animated_sprite.material.resource_path if animated_sprite and animated_sprite.material else "NONE",
-		"character_type": character_type,
-		"is_ai_controlled": is_ai_controlled()
-	}
 
 func _disconnect_turn_signals() -> void:
 	"""Disconnect from turn manager signals during cleanup"""
@@ -296,9 +263,6 @@ func _play_animation(base_name: String, direction: GameConstants.Direction = cur
 		animated_sprite.play(base_name.to_lower())
 		return
 	
-	# Debug: Log missing animation for development
-	if OS.is_debug_build():
-		print("Warning: Animation '%s' (and fallbacks) not found for %s" % [animation_name, character_type])
 
 @rpc("call_local", "any_peer", "reliable")
 func _play_animation_synchronized(base_name: String, direction: GameConstants.Direction = current_facing_direction) -> void:
@@ -313,10 +277,6 @@ func _play_animation_synchronized(base_name: String, direction: GameConstants.Di
 
 func attempt_move_to(target_position: Vector2i) -> bool:
 	"""Attempt to move to a grid position using pathfinding, consuming MP if successful"""
-	
-	# Only allow the character owner to initiate movement
-	if get_multiplayer_authority() != multiplayer.get_unique_id():
-		return false
 	
 	if not grid_manager or is_moving:
 		return false
@@ -349,12 +309,6 @@ func attempt_move_to(target_position: Vector2i) -> bool:
 @rpc("any_peer", "call_local", "reliable")
 func _execute_networked_movement(path: Array[Vector2i], cost: int) -> void:
 	"""Execute movement across all clients (RPC method)"""
-	
-	# Verify that the movement request is from the character owner
-	var sender_id = multiplayer.get_remote_sender_id()
-	if sender_id != get_multiplayer_authority() and sender_id != 0:  # 0 means local call
-		return
-	
 	_execute_path_movement(path, cost)
 
 func _calculate_path_cost(path: Array[Vector2i]) -> int:
@@ -517,22 +471,6 @@ func set_grid_position(new_position: Vector2i) -> void:
 		# Register character position with grid manager
 		grid_manager.register_character_position(self, grid_position)
 
-func apply_direct_damage(damage: int) -> void:
-	"""Apply direct damage to character (host authority only) - for debug/special cases"""
-	# Only allow host to deal damage
-	if multiplayer.get_unique_id() != 1:
-		push_warning("apply_direct_damage() can only be called by host")
-		return
-		
-	# Apply damage to resources
-	resources.take_damage(damage)
-	
-	# Play damage animation synchronized across all clients
-	_play_animation_synchronized.rpc(GameConstants.TAKE_DAMAGE_ANIMATION_PREFIX)
-	
-	# Handle death if needed
-	if resources.get_health_stats().current <= 0:
-		_handle_death()
 
 func heal(amount: int) -> void:
 	"""Heal the character"""

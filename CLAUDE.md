@@ -4,6 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Communication Guidelines
 
+- do not maintain backwards compatibility or legacy code, keep the codebase lean
 - Do what has been asked; nothing more, nothing less
 - NEVER create files unless absolutely necessary
 - ALWAYS prefer editing existing files over creating new ones

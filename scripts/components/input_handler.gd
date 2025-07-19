@@ -53,21 +53,10 @@ func _input(event: InputEvent) -> void:
 			ui_manager._on_give_up_pressed()
 		return
 	
-	# Handle debug keys
-	if event.is_action_pressed("debug_f2"):
-		_execute_debug_action("test_movement")
-		return
-	
-	if event.is_action_pressed("debug_f3"):
-		_execute_debug_action("test_damage")
-		return
-	
-	if event.is_action_pressed("debug_f4"):
-		_execute_debug_action("test_enemy_ai")
-		return
-	
-	if event.is_action_pressed("debug_toggle_grid"):
-		_execute_debug_action("toggle_grid_borders")
+	# Handle grid toggle
+	if event.is_action_pressed("toggle_grid"):
+		if game_controller and game_controller.has_method("_toggle_grid_borders"):
+			game_controller._toggle_grid_borders()
 		return
 
 
@@ -82,22 +71,3 @@ func cleanup() -> void:
 	"""Clean up input handler connections"""
 	if grid_manager and grid_manager.tile_clicked.is_connected(_on_tile_clicked):
 		grid_manager.tile_clicked.disconnect(_on_tile_clicked)
-
-func _execute_debug_action(action: String) -> void:
-	"""Execute a debug action based on the input"""
-	if not game_controller:
-		return
-		
-	match action:
-		"test_movement":
-			if game_controller.has_method("_debug_test_movement"):
-				game_controller._debug_test_movement()
-		"test_damage":
-			if game_controller.has_method("_debug_test_damage"):
-				game_controller._debug_test_damage()
-		"test_enemy_ai":
-			if game_controller.has_method("_debug_test_enemy_ai"):
-				game_controller._debug_test_enemy_ai()
-		"toggle_grid_borders":
-			if game_controller.has_method("_toggle_grid_borders"):
-				game_controller._toggle_grid_borders()

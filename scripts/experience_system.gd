@@ -106,12 +106,4 @@ func award_boss_fight_experience() -> void:
 	"""Award experience for a boss fight"""
 	award_experience_for_boss_fight("boss")
 
-# Debug functions for testing
-func debug_award_test_experience() -> void:
-	"""Award some test experience for debugging"""
-	_award_experience_to_class(participating_class, 150)
-
-func debug_set_class_and_award(character_class: String, amount: int) -> void:
-	"""Debug function to set class and award specific amount"""
-	set_participating_class(character_class)
-	_award_experience_to_class(character_class, amount) 
+ 
