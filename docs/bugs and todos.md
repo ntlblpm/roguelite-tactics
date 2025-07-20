@@ -7,8 +7,9 @@
 
 ## todos
 
+- remove spirit from enemy list
+- improve ap/mp stat display appearance.
 - ui improvements everywhere
-- ability tooltips
 - floating damage numbers
 
 later:

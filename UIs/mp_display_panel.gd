@@ -3,7 +3,8 @@ extends Panel
 @onready var mp_container: HBoxContainer = $MPContainer
 @onready var mp_text: Label = $MPContainer/MPText
 @onready var discrete_bar: DiscreteBarDisplay
-@onready var text_overlay: Label
+@onready var text_label: Label
+@onready var content_container: HBoxContainer
 
 func _ready():
 	var style = StyleBoxFlat.new()
@@ -27,35 +28,44 @@ func _ready():
 	# Hide the original container and text
 	mp_container.visible = false
 	
-	# Create discrete bar display that fills the panel
+	# Create horizontal container for text and bar
+	content_container = HBoxContainer.new()
+	content_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content_container.add_theme_constant_override("margin_left", 8)
+	content_container.add_theme_constant_override("margin_right", 8)
+	content_container.add_theme_constant_override("margin_top", 8)
+	content_container.add_theme_constant_override("margin_bottom", 8)
+	content_container.add_theme_constant_override("separation", 8)
+	add_child(content_container)
+	
+	# Create text label on the left
+	text_label = Label.new()
+	text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	text_label.add_theme_color_override("font_color", Color(0.9, 1.0, 0.9))
+	text_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	text_label.add_theme_constant_override("shadow_offset_x", 1)
+	text_label.add_theme_constant_override("shadow_offset_y", 1)
+	text_label.text = "MP: 0/0"
+	content_container.add_child(text_label)
+	
+	# Create discrete bar display on the right
 	discrete_bar = DiscreteBarDisplay.new()
 	discrete_bar.filled_color = Color(0.2, 0.8, 0.2)  # Green for MP
 	discrete_bar.empty_color = Color(0.1, 0.3, 0.1, 0.5)  # Dark green-gray
 	discrete_bar.segment_height = 8.0
+	discrete_bar.segment_width = 16.0  # Thin vertical bar
 	discrete_bar.segment_separation = 2
-	discrete_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
-	discrete_bar.add_theme_constant_override("margin_left", 8)
-	discrete_bar.add_theme_constant_override("margin_right", 8)
-	discrete_bar.add_theme_constant_override("margin_top", 8)
-	discrete_bar.add_theme_constant_override("margin_bottom", 8)
-	add_child(discrete_bar)
-	
-	# Create text overlay
-	text_overlay = Label.new()
-	text_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	text_overlay.set_offsets_preset(Control.PRESET_FULL_RECT)
-	text_overlay.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	text_overlay.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	text_overlay.add_theme_color_override("font_color", Color(0.9, 1.0, 0.9))
-	text_overlay.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	text_overlay.add_theme_constant_override("shadow_offset_x", 1)
-	text_overlay.add_theme_constant_override("shadow_offset_y", 1)
-	text_overlay.text = "MP: 0/0"
-	add_child(text_overlay)
+	discrete_bar.is_vertical = true
+	discrete_bar.size_flags_horizontal = Control.SIZE_SHRINK_END
+	discrete_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_container.add_child(discrete_bar)
 
 func update_mp_display(current: int, maximum: int) -> void:
 	"""Update both text and discrete bar display"""
-	if text_overlay:
-		text_overlay.text = "MP: %d/%d" % [current, maximum]
+	if text_label:
+		text_label.text = "MP: %d/%d" % [current, maximum]
 	if discrete_bar:
 		discrete_bar.update_display(current, maximum)

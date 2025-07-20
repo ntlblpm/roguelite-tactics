@@ -1,10 +1,10 @@
 extends PanelContainer
 class_name TurnOrderSlot
 
-@onready var viewport_rect: TextureRect = $HBoxContainer/ViewportTextureRect
-@onready var name_label: Label = $HBoxContainer/NameLabel
-@onready var hp_bar: ProgressBar = $HBoxContainer/HPBarContainer/HPBar
-@onready var hp_value_label: Label = $HBoxContainer/HPBarContainer/HPValueLabel
+@onready var viewport_rect: TextureRect = $VBoxContainer/ViewportTextureRect
+@onready var name_label: Label = $VBoxContainer/NameLabel
+@onready var hp_bar: ProgressBar = $VBoxContainer/HPContainer/HPBar
+@onready var hp_value_label: Label = $VBoxContainer/HPContainer/HPLabel
 @onready var viewport: SubViewport = $CharacterViewport
 @onready var camera: Camera2D = $CharacterViewport/Camera2D
 
@@ -46,6 +46,11 @@ func setup(character_ref: BaseCharacter) -> void:
 	# Set character type name
 	if name_label:
 		name_label.text = _get_character_type_name(character)
+		# Color based on player vs enemy
+		if character.is_ai_controlled():
+			name_label.modulate = Color.RED
+		else:
+			name_label.modulate = Color.GREEN
 	
 	# Setup viewport texture
 	if viewport_rect and viewport:
@@ -59,10 +64,28 @@ func setup(character_ref: BaseCharacter) -> void:
 	if character.resources:
 		character.resources.health_changed.connect(_on_health_changed)
 		_update_hp_display(character.resources.current_health_points, character.resources.max_health_points)
+	
+	# Set initial border and name style
+	_update_border()
+	_update_name_style()
 
 func _get_character_type_name(char: BaseCharacter) -> String:
 	# Use the character_type property that exists in BaseCharacter
-	return char.character_type
+	var raw_name = char.character_type
+	
+	# Format the name by adding spaces between camelCase words
+	var formatted_name = ""
+	for i in range(raw_name.length()):
+		var char_at = raw_name[i]
+		# Add space before uppercase letters (except first character)
+		if i > 0 and char_at == char_at.to_upper() and char_at != "_":
+			formatted_name += " "
+		formatted_name += char_at
+	
+	# Handle special cases like "AI" or consecutive capitals
+	formatted_name = formatted_name.replace("A I", "AI")
+	
+	return formatted_name
 
 func _setup_character_camera() -> void:
 	if not character or not is_instance_valid(character) or not camera or not viewport:
@@ -101,10 +124,10 @@ func _setup_character_camera() -> void:
 		
 		viewport.add_child(character_preview)
 		
-		# Center the preview in the viewport
-		character_preview.position = Vector2(32, 32)  # Center of 64x64 viewport
+		# Center the preview in the viewport, shifted down by 5px
+		character_preview.position = Vector2(32, 29)  # Center X, shifted down 5px
 		
-		# Set camera to center of viewport
+		# Set camera to center of viewport, following the character position
 		camera.position = Vector2(32, 32)
 		camera.zoom = Vector2(1, 1)  # Adjust zoom to fit character
 	else:
@@ -132,37 +155,57 @@ func _update_hp_display(current: int, maximum: int) -> void:
 
 func set_current_turn(is_current: bool) -> void:
 	is_current_turn = is_current
+	_update_border()
+	_update_name_style()
+
+func _update_border() -> void:
+	if not character:
+		return
 	
-	if is_current and character:
-		# Add a colored border based on character type
-		var border_color: Color
-		
-		if not character.is_ai_controlled():
-			# It's a player character - check if it's the local player or another player
-			if character.get_multiplayer_authority() == multiplayer.get_unique_id():
-				border_color = Color.GREEN  # Local player's turn
-			else:
-				border_color = Color.BLUE   # Other player's turn
-		else:
-			border_color = Color.RED  # Enemy turn
-		
-		# Apply border by adding a stylebox override
-		var stylebox = StyleBoxFlat.new()
+	# Create and apply stylebox
+	var stylebox = StyleBoxFlat.new()
+	
+	# Always have 1px white border, 3px for current turn
+	if is_current_turn:
 		stylebox.border_width_left = 3
 		stylebox.border_width_right = 3
 		stylebox.border_width_top = 3
 		stylebox.border_width_bottom = 3
-		stylebox.border_color = border_color
-		stylebox.bg_color = Color(0.1, 0.1, 0.1, 0.8)  # Dark background
-		stylebox.corner_radius_top_left = 4
-		stylebox.corner_radius_top_right = 4
-		stylebox.corner_radius_bottom_left = 4
-		stylebox.corner_radius_bottom_right = 4
-		
-		add_theme_stylebox_override("panel", stylebox)
 	else:
-		# Remove border when not current turn
-		remove_theme_stylebox_override("panel")
+		# 1px border when not current turn
+		stylebox.border_width_left = 1
+		stylebox.border_width_right = 1
+		stylebox.border_width_top = 1
+		stylebox.border_width_bottom = 1
+	
+	# Use cyan for current turn, white for others
+	if is_current_turn:
+		stylebox.border_color = Color.CYAN
+	else:
+		stylebox.border_color = Color.WHITE
+	stylebox.bg_color = Color(0.1, 0.1, 0.1, 0.8)  # Dark background
+	stylebox.corner_radius_top_left = 4
+	stylebox.corner_radius_top_right = 4
+	stylebox.corner_radius_bottom_left = 4
+	stylebox.corner_radius_bottom_right = 4
+	
+	add_theme_stylebox_override("panel", stylebox)
+
+func _update_name_style() -> void:
+	if not name_label:
+		return
+	
+	# Create a font variation for bold text
+	if is_current_turn:
+		var font = name_label.get_theme_font("font")
+		if font:
+			var font_variation = FontVariation.new()
+			font_variation.base_font = font
+			font_variation.variation_embolden = 0.5  # Make text bold
+			name_label.add_theme_font_override("font", font_variation)
+	else:
+		# Remove font override to return to normal weight
+		name_label.remove_theme_font_override("font")
 
 func _process(_delta: float) -> void:
 	if character and is_instance_valid(character) and character_preview:

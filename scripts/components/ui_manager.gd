@@ -136,6 +136,16 @@ func add_combat_message(message: String) -> void:
 	if chat_panel:
 		chat_panel.add_combat_message(message)
 
+func add_formatted_combat_message(formatted_message: String) -> void:
+	"""Add a pre-formatted combat message to the chat panel"""
+	if chat_panel:
+		chat_panel.add_formatted_combat_message(formatted_message)
+
+@rpc("any_peer", "call_local", "reliable")
+func add_formatted_combat_message_multiplayer(formatted_message: String) -> void:
+	"""Add a pre-formatted combat message across all peers"""
+	add_formatted_combat_message(formatted_message)
+
 func update_turn_order(characters_in_order: Array[BaseCharacter], current_character: BaseCharacter, current_index: int, turn_manager: TurnManager) -> void:
 	"""Update the turn order UI to show all characters in initiative order"""
 	if not turn_order_panel:
@@ -236,16 +246,14 @@ func _on_give_up_pressed() -> void:
 	"""Handle Give up button press - show confirmation dialog"""
 	if give_up_confirmation_dialog:
 		give_up_confirmation_dialog.popup_centered()
-		add_system_message("Give up confirmation dialog opened")
 
 func _on_give_up_confirmed() -> void:
 	"""Handle Give up confirmation"""
-	add_combat_message("Giving up and returning to main menu...")
 	give_up_requested.emit()
 
 func _on_give_up_canceled() -> void:
 	"""Handle Give up cancellation"""
-	add_system_message("Give up canceled - continuing the fight!")
+	pass
 
 func _on_end_turn_pressed() -> void:
 	"""Handle end turn button press"""

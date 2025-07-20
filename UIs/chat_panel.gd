@@ -24,9 +24,6 @@ func _ready() -> void:
 	chat_input.modulate = Color(0.8, 0.8, 0.8, 0.8)
 	chat_input.placeholder_text = "Press Enter to chat..."
 	
-	# Add initial system message
-	add_system_message("Press Enter to type a message")
-	
 	# Don't auto-focus on start
 
 func _on_message_submitted(message_text: String) -> void:
@@ -57,6 +54,10 @@ func add_system_message(message: String) -> void:
 func add_combat_message(message: String) -> void:
 	"""Add a combat-related message (yellow colored)"""
 	var formatted_message: String = "[color=yellow]%s[/color]" % message
+	_append_to_display(formatted_message)
+
+func add_formatted_combat_message(formatted_message: String) -> void:
+	"""Add a pre-formatted combat message (with BBCode)"""
 	_append_to_display(formatted_message)
 
 func add_error_message(message: String) -> void:
@@ -91,7 +92,6 @@ func _on_focus_entered() -> void:
 	"""Handle when chat input gains focus"""
 	# Visual feedback that chat is active
 	chat_input.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	add_system_message("Chat active - press Escape to exit")
 
 func _on_focus_exited() -> void:
 	"""Handle when chat input loses focus"""

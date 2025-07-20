@@ -326,9 +326,6 @@ func _on_tile_clicked(grid_position: Vector2i) -> void:
 	
 	if movement_successful:
 		var player_name = _get_player_name_for_character(current_character)
-		ui_manager.add_combat_message("%s (%s) moved to %s" % [player_name, current_character.character_type, str(grid_position)])
-	else:
-		ui_manager.add_system_message("Cannot move to that position")
 
 
 func _on_ability_used(character: BaseCharacter, ability: AbilityComponent, target_position: Vector2i) -> void:
@@ -372,7 +369,6 @@ func _on_turn_started(character: BaseCharacter) -> void:
 			# Enemy turn
 			if grid_manager:
 				grid_manager.clear_movement_highlights()
-			ui_manager.add_combat_message("Enemy " + current_turn_character.character_type + " is taking their turn...")
 	else:
 		# Not local player's turn
 		if grid_manager:
@@ -415,8 +411,6 @@ func _on_movement_points_changed(current: int, maximum: int) -> void:
 			grid_manager.highlight_movement_range(current_character.grid_position, current, current_character)
 	elif grid_manager:
 		grid_manager.clear_movement_highlights()
-		if turn_manager and turn_manager.is_local_player_turn() and turn_manager.is_character_turn_active() and current <= 0:
-			ui_manager.add_system_message("No movement points remaining - Movement range cleared")
 
 func _on_ability_points_changed(current: int, maximum: int) -> void:
 	"""Update AP display when ability points change"""
@@ -432,7 +426,6 @@ func _on_character_selected() -> void:
 				current_character.resources.get_movement_points(), 
 				current_character
 			)
-			ui_manager.add_system_message(current_character.character_type + " selected - Movement range highlighted")
 
 func _on_movement_completed(new_position: Vector2i) -> void:
 	"""Handle when the character's movement is completed"""
@@ -440,7 +433,6 @@ func _on_movement_completed(new_position: Vector2i) -> void:
 		var current_character = turn_manager.get_current_character()
 		if current_character and not current_character.is_ai_controlled():
 			grid_manager.highlight_movement_range(new_position, current_character.resources.get_movement_points(), current_character)
-			ui_manager.add_system_message("Movement range updated from new position: " + str(new_position))
 
 func _update_turn_order_ui() -> void:
 	"""Update the turn order UI"""
@@ -527,7 +519,6 @@ func _on_character_died(character: BaseCharacter) -> void:
 	
 	if all_enemies_dead:
 		# Victory!
-		ui_manager.add_system_message("Victory! All enemies defeated!")
 		print("[GameController] Host triggering victory for all players")
 		await get_tree().create_timer(2.0).timeout
 		_trigger_victory.rpc()
@@ -544,7 +535,6 @@ func _on_character_died(character: BaseCharacter) -> void:
 	
 	if all_players_dead:
 		# Defeat!
-		ui_manager.add_system_message("Defeat! All players have fallen!")
 		print("[GameController] Host triggering defeat for all players")
 		await get_tree().create_timer(2.0).timeout
 		_trigger_defeat.rpc()

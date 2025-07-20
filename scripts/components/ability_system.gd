@@ -60,8 +60,10 @@ func _update_ability_button(button: Button, ability: AbilityComponent, character
 	"""Update a single ability button"""
 	button.visible = true
 	
-	# Format button text with AP cost and cooldown
+	# Format button text with AP cost, damage, range, and cooldown
 	var button_text = ability.ability_name + "\n"
+	button_text += "Damage: " + str(ability.damage) + "\n"
+	button_text += "Range: " + str(ability.range) + "\n"
 	button_text += "AP: " + str(ability.ap_cost)
 	
 	# Show cooldown if active
@@ -123,8 +125,7 @@ func start_ability_targeting(ability: AbilityComponent) -> void:
 	if current_character and grid_manager:
 		_show_ability_range(current_character, ability)
 		
-	if ui_manager:
-		ui_manager.add_system_message("Select a target for " + ability.ability_name)
+	# Targeting mode activated
 	
 	targeting_mode_changed.emit(true, ability)
 
@@ -146,8 +147,7 @@ func cancel_ability_targeting() -> void:
 				current_character
 			)
 	
-	if ui_manager:
-		ui_manager.add_system_message("Ability targeting cancelled")
+	# Targeting cancelled
 	
 	targeting_mode_changed.emit(false, null)
 
@@ -182,19 +182,59 @@ func handle_tile_click(grid_position: Vector2i) -> void:
 	if not ability_targeting_mode or not selected_ability or not current_character:
 		return
 	
-	# Store ability name before await in case selected_ability becomes null
+	# Store ability reference and name before await in case selected_ability becomes null
 	var ability_name = selected_ability.ability_name
+	var ability_ref = selected_ability
+	
+	# Connect to damage signal to capture damage information
+	var damage_info = {"targets": [], "damage": 0}
+	var damage_handler = func(targets: Array[BaseCharacter], damage_amount: int):
+		damage_info.targets = targets
+		damage_info.damage = damage_amount
+	
+	ability_ref.ability_damage_dealt.connect(damage_handler, CONNECT_ONE_SHOT)
 	
 	# Attempt to use the ability
-	var ability_successful = await selected_ability.use_ability(grid_position)
+	var ability_successful = await ability_ref.use_ability(grid_position)
 	
 	if ability_successful:
-		if ui_manager:
-			var player_name = _get_player_name_for_character(current_character)
-			ui_manager.add_combat_message("%s used %s!" % [player_name, ability_name])
+		# Wait a frame to ensure damage signal has been emitted
+		await get_tree().process_frame
+		
+		if ui_manager and damage_info.targets.size() > 0:
+			# Format the enhanced combat message
+			var target = damage_info.targets[0]  # Get first target
+			var caster_name = current_character.character_type
+			var target_name = target.character_type
+			
+			# Determine colors based on AI control
+			var caster_color = "red" if current_character.is_ai_controlled() else "green"
+			var target_color = "red" if target.is_ai_controlled() else "green"
+			
+			# Format message with colors
+			var formatted_message = "[color=%s]%s[/color] [color=white]used[/color] [color=white]%s[/color] [color=white]on[/color] [color=%s]%s[/color] [color=white]for[/color] [b]%d[/b] [color=white]damage[/color]." % [
+				caster_color, caster_name,
+				ability_name,
+				target_color, target_name,
+				damage_info.damage
+			]
+			
+			ui_manager.add_formatted_combat_message_multiplayer.rpc(formatted_message)
+		elif ui_manager and ability_successful:
+			# Fallback for abilities without targets
+			var caster_name = current_character.character_type
+			var caster_color = "red" if current_character.is_ai_controlled() else "green"
+			var formatted_message = "[color=%s]%s[/color] [color=white]used[/color] [color=white]%s[/color]." % [
+				caster_color, caster_name, ability_name
+			]
+			ui_manager.add_formatted_combat_message_multiplayer.rpc(formatted_message)
 		
 		# Emit signal
-		ability_used.emit(current_character, selected_ability, grid_position)
+		ability_used.emit(current_character, ability_ref, grid_position)
+	
+	# Disconnect handler if still connected
+	if ability_ref.ability_damage_dealt.is_connected(damage_handler):
+		ability_ref.ability_damage_dealt.disconnect(damage_handler)
 		
 		# Update UI after ability use
 		update_ability_bar(current_character)
@@ -209,9 +249,6 @@ func handle_tile_click(grid_position: Vector2i) -> void:
 				current_character.resources.current_ability_points,
 				current_character.resources.max_ability_points
 			)
-	else:
-		if ui_manager:
-			ui_manager.add_system_message("Invalid target for " + ability_name)
 	
 	# Exit ability targeting mode
 	cancel_ability_targeting()

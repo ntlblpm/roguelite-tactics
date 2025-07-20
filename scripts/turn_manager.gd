@@ -128,10 +128,7 @@ func _start_turn() -> void:
 	is_turn_active = true
 	current_character = characters[current_character_index]
 	
-	# Log turn start
-	if chat_panel:
-		var player_name = _get_player_name_for_character(current_character)
-		chat_panel.add_combat_message("Turn %d - %s (%s) begins their turn" % [turn_number, player_name, current_character.character_type])
+	# Turn started
 	
 	turn_started.emit(current_character)
 	combat_phase_changed.emit("player_turn")
@@ -197,8 +194,6 @@ func _on_end_turn_pressed() -> void:
 	# Only allow the current player to end their own turn
 	var local_authority = multiplayer.get_unique_id()
 	if current_character.get_multiplayer_authority() != local_authority:
-		if chat_panel:
-			chat_panel.add_system_message("You can only end your own turn!")
 		return
 	
 	# Send RPC to end turn
@@ -228,10 +223,7 @@ func _end_current_turn() -> void:
 	
 	is_turn_active = false
 	
-	# Log turn end
-	if chat_panel:
-		var player_name = _get_player_name_for_character(current_character)
-		chat_panel.add_combat_message("%s (%s) ends their turn - Resources refreshed!" % [player_name, current_character.character_type])
+	# Turn ending
 	
 	# End the character's turn (this will refresh their resources)
 	current_character.end_turn()
@@ -260,10 +252,7 @@ func _advance_to_next_turn() -> void:
 	
 	is_turn_active = false
 	
-	# Log turn end (character already called end_turn() so resources are refreshed)
-	if chat_panel:
-		var player_name = _get_player_name_for_character(current_character)
-		chat_panel.add_combat_message("%s (%s) ends their turn - Resources refreshed!" % [player_name, current_character.character_type])
+	# Turn ending (character already called end_turn() so resources are refreshed)
 	
 	# NOTE: Don't call current_character.end_turn() here - it was already called by the character
 	# that emitted the signal, which is what triggered this method
@@ -338,8 +327,6 @@ func is_local_player_turn() -> bool:
 func force_end_turn() -> void:
 	"""Force end the current turn (for debug or special cases)"""
 	if is_turn_active:
-		if chat_panel:
-			chat_panel.add_system_message("Turn forcibly ended")
 		if NetworkManager and NetworkManager.is_host:
 			_end_current_turn.rpc()
 
@@ -399,10 +386,7 @@ func _on_character_died(character: BaseCharacter) -> void:
 	if not character:
 		return
 	
-	# Log death
-	if chat_panel:
-		var player_name = _get_player_name_for_character(character)
-		chat_panel.add_combat_message("%s (%s) has been defeated!" % [player_name, character.character_type])
+	# Character defeated
 	
 	# If it's the current character's turn, wait for death sequence
 	if character == current_character and is_turn_active:

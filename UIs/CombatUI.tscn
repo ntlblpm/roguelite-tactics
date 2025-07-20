@@ -65,19 +65,12 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -150.0
+offset_left = -140.0
 offset_top = 10.0
 offset_right = -10.0
 offset_bottom = 300.0
 grow_horizontal = 0
 script = ExtResource("2_wnapn")
-
-[node name="TurnOrderLabel" type="Label" parent="UILayer/MainUI/TurnOrderPanel"]
-layout_mode = 2
-size_flags_vertical = 0
-theme_override_font_sizes/font_size = 14
-text = "Turn Order"
-horizontal_alignment = 1
 
 [node name="StatDisplay" type="Panel" parent="UILayer/MainUI"]
 layout_mode = 1
