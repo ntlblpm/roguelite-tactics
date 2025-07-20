@@ -1,6 +1,27 @@
 extends Button
 
+var rich_text_label: RichTextLabel
+
 func _ready():
+	# Create a RichTextLabel child for BBCode support
+	rich_text_label = RichTextLabel.new()
+	rich_text_label.bbcode_enabled = true
+	rich_text_label.fit_content = true
+	rich_text_label.scroll_active = false
+	rich_text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rich_text_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rich_text_label.set_offsets_preset(Control.PRESET_FULL_RECT)
+	rich_text_label.offset_left = 8
+	rich_text_label.offset_top = 8
+	rich_text_label.offset_right = -8
+	rich_text_label.offset_bottom = -8
+	add_child(rich_text_label)
+	
+	# Hide the default button text
+	text = ""
+	
+	# Connect to text changes
+	set_notify_transform(true)
 	var style_normal = StyleBoxFlat.new()
 	style_normal.bg_color = Color(0.15, 0.15, 0.15)  # Dark background
 	
@@ -52,3 +73,14 @@ func _ready():
 	style_pressed.corner_radius_bottom_right = 4
 	
 	add_theme_stylebox_override("pressed", style_pressed)
+
+func _set(property: StringName, value: Variant) -> bool:
+	if property == "text" and rich_text_label:
+		rich_text_label.text = value
+		return true
+	return false
+
+func _process(_delta: float) -> void:
+	if rich_text_label:
+		# Make RichTextLabel inherit button's modulate color
+		rich_text_label.modulate = modulate

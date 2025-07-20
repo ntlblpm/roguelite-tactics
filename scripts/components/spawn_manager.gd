@@ -147,7 +147,7 @@ func generate_enemy_types(player_count: int) -> Array:
 		types.append("Skeleton")
 	
 	# One random enemy from the other types
-	var random_enemy_types: Array[String] = ["SkeletonKnight", "UndeadMage", "Spirit", "DarkLord"]
+	var random_enemy_types: Array[String] = ["SkeletonKnight", "UndeadMage", "DarkLord"]
 	var random_type: String = random_enemy_types.pick_random()
 	types.append(random_type)
 	

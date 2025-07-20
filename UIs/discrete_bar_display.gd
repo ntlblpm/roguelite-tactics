@@ -1,5 +1,5 @@
 class_name DiscreteBarDisplay
-extends VBoxContainer
+extends Container
 
 ## Displays a discrete bar with individual segments for each point
 ## Used for MP and AP display in combat UI
@@ -16,12 +16,11 @@ var max_value: int = 0
 var segments: Array[Panel] = []
 
 func _ready() -> void:
-	add_theme_constant_override("separation", segment_separation)
-	alignment = BoxContainer.ALIGNMENT_CENTER
-	
-	# Set custom minimum size for vertical bars
+	# Set custom minimum size
 	if is_vertical:
 		custom_minimum_size.x = segment_width
+	else:
+		custom_minimum_size.y = segment_height
 
 func update_display(current: int, maximum: int) -> void:
 	"""Update the discrete bar display with new values"""
@@ -33,19 +32,9 @@ func update_display(current: int, maximum: int) -> void:
 		segment.queue_free()
 	segments.clear()
 	
-	# Create new segments (in reverse order so filled ones are at bottom)
-	for i in range(max_value - 1, -1, -1):
+	# Create new segments
+	for i in range(max_value):
 		var segment := Panel.new()
-		
-		if is_vertical:
-			segment.size_flags_horizontal = Control.SIZE_FILL
-			segment.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			segment.custom_minimum_size.y = segment_height
-			segment.custom_minimum_size.x = segment_width
-		else:
-			segment.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			segment.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			segment.custom_minimum_size.y = segment_height
 		
 		# Create stylebox for the segment
 		var style := StyleBoxFlat.new()
@@ -62,18 +51,13 @@ func update_display(current: int, maximum: int) -> void:
 		style.border_width_bottom = 1
 		style.border_color = Color(0.2, 0.2, 0.2, 0.8)
 		
-		# Add margins for better appearance
-		if is_vertical:
-			style.content_margin_left = 2
-			style.content_margin_right = 2
-		else:
-			style.content_margin_left = 4
-			style.content_margin_right = 4
-		
 		segment.add_theme_stylebox_override("panel", style)
 		
 		add_child(segment)
 		segments.append(segment)
+	
+	# Trigger layout update
+	queue_sort()
 
 func set_filled_color(color: Color) -> void:
 	"""Set the color for filled segments"""
@@ -88,7 +72,39 @@ func set_empty_color(color: Color) -> void:
 func _update_segment_colors() -> void:
 	"""Update colors of existing segments"""
 	for i in range(segments.size()):
-		var actual_index = segments.size() - 1 - i  # Reverse the index since bars are added in reverse order
 		var style := segments[i].get_theme_stylebox("panel") as StyleBoxFlat
 		if style:
-			style.bg_color = filled_color if actual_index < current_value else empty_color
+			style.bg_color = filled_color if i < current_value else empty_color
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_SORT_CHILDREN:
+		_do_layout()
+
+func _do_layout() -> void:
+	"""Perform custom layout for segments"""
+	if segments.is_empty():
+		return
+	
+	var available_size := size
+	var segment_count := segments.size()
+	
+	if is_vertical:
+		# Vertical layout (bottom to top)
+		var total_height := available_size.y - (segment_separation * (segment_count - 1))
+		var segment_h := total_height / segment_count
+		
+		for i in range(segment_count):
+			var segment := segments[i]
+			var y_pos := available_size.y - ((i + 1) * segment_h) - (i * segment_separation)
+			segment.position = Vector2(0, y_pos)
+			segment.size = Vector2(available_size.x, segment_h)
+	else:
+		# Horizontal layout (left to right)
+		var total_width := available_size.x - (segment_separation * (segment_count - 1))
+		var segment_w := total_width / segment_count
+		
+		for i in range(segment_count):
+			var segment := segments[i]
+			var x_pos := i * (segment_w + segment_separation)
+			segment.position = Vector2(x_pos, 0)
+			segment.size = Vector2(segment_w, available_size.y)

@@ -4,7 +4,7 @@ extends Panel
 @onready var mp_text: Label = $MPContainer/MPText
 @onready var discrete_bar: DiscreteBarDisplay
 @onready var text_label: Label
-@onready var content_container: HBoxContainer
+@onready var content_container: VBoxContainer
 
 func _ready():
 	var style = StyleBoxFlat.new()
@@ -28,21 +28,21 @@ func _ready():
 	# Hide the original container and text
 	mp_container.visible = false
 	
-	# Create horizontal container for text and bar
-	content_container = HBoxContainer.new()
+	# Create vertical container for text and bar
+	content_container = VBoxContainer.new()
 	content_container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	content_container.add_theme_constant_override("margin_left", 8)
 	content_container.add_theme_constant_override("margin_right", 8)
 	content_container.add_theme_constant_override("margin_top", 8)
 	content_container.add_theme_constant_override("margin_bottom", 8)
-	content_container.add_theme_constant_override("separation", 8)
+	content_container.add_theme_constant_override("separation", 4)
 	add_child(content_container)
 	
-	# Create text label on the left
+	# Create text label on top
 	text_label = Label.new()
 	text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	text_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	text_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	text_label.add_theme_color_override("font_color", Color(0.9, 1.0, 0.9))
 	text_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
@@ -51,15 +51,15 @@ func _ready():
 	text_label.text = "MP: 0/0"
 	content_container.add_child(text_label)
 	
-	# Create discrete bar display on the right
+	# Create discrete bar display on bottom
 	discrete_bar = DiscreteBarDisplay.new()
 	discrete_bar.filled_color = Color(0.2, 0.8, 0.2)  # Green for MP
 	discrete_bar.empty_color = Color(0.1, 0.3, 0.1, 0.5)  # Dark green-gray
-	discrete_bar.segment_height = 8.0
-	discrete_bar.segment_width = 16.0  # Thin vertical bar
+	discrete_bar.segment_height = 12.0
+	discrete_bar.segment_width = 0  # Not used for horizontal bars
 	discrete_bar.segment_separation = 2
-	discrete_bar.is_vertical = true
-	discrete_bar.size_flags_horizontal = Control.SIZE_SHRINK_END
+	discrete_bar.is_vertical = false
+	discrete_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	discrete_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content_container.add_child(discrete_bar)
 

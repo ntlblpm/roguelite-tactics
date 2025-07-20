@@ -61,7 +61,7 @@ func _update_ability_button(button: Button, ability: AbilityComponent, character
 	button.visible = true
 	
 	# Format button text with AP cost, damage, range, and cooldown
-	var button_text = ability.ability_name + "\n"
+	var button_text = "[b]" + ability.ability_name + "[/b]\n"
 	button_text += "Damage: " + str(ability.damage) + "\n"
 	button_text += "Range: " + str(ability.range) + "\n"
 	button_text += "AP: " + str(ability.ap_cost)

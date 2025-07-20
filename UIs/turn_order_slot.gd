@@ -165,12 +165,12 @@ func _update_border() -> void:
 	# Create and apply stylebox
 	var stylebox = StyleBoxFlat.new()
 	
-	# Always have 1px white border, 3px for current turn
+	# Always have 1px white border, 2px for current turn
 	if is_current_turn:
-		stylebox.border_width_left = 3
-		stylebox.border_width_right = 3
-		stylebox.border_width_top = 3
-		stylebox.border_width_bottom = 3
+		stylebox.border_width_left = 2
+		stylebox.border_width_right = 2
+		stylebox.border_width_top = 2
+		stylebox.border_width_bottom = 2
 	else:
 		# 1px border when not current turn
 		stylebox.border_width_left = 1
@@ -178,11 +178,8 @@ func _update_border() -> void:
 		stylebox.border_width_top = 1
 		stylebox.border_width_bottom = 1
 	
-	# Use cyan for current turn, white for others
-	if is_current_turn:
-		stylebox.border_color = Color.CYAN
-	else:
-		stylebox.border_color = Color.WHITE
+	# White border for all
+	stylebox.border_color = Color.WHITE
 	stylebox.bg_color = Color(0.1, 0.1, 0.1, 0.8)  # Dark background
 	stylebox.corner_radius_top_left = 4
 	stylebox.corner_radius_top_right = 4
