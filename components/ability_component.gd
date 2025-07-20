@@ -234,6 +234,9 @@ func _execute_damage_with_animation(target_paths: Array[NodePath], damage_amount
 			# Apply damage directly to resources
 			target.resources.take_damage(damage_amount)
 			
+			# Spawn floating damage number
+			_spawn_floating_damage_number(target, damage_amount)
+			
 			# Check if target died from this damage
 			if target.resources.get_health_stats().current <= 0:
 				# Handle death (which will play death animation)
@@ -249,6 +252,29 @@ func _execute_damage_with_animation(target_paths: Array[NodePath], damage_amount
 		if target:
 			targets.append(target)
 	ability_damage_dealt.emit(targets, damage_amount)
+
+func _spawn_floating_damage_number(target: BaseCharacter, damage_amount: int) -> void:
+	"""Spawn a floating damage number above the target"""
+	# Load the floating damage number scene
+	var floating_damage_scene = preload("res://scenes/FloatingDamageNumber.tscn")
+	if not floating_damage_scene:
+		push_warning("FloatingDamageNumber scene not found")
+		return
+	
+	# Instance the scene
+	var damage_number = floating_damage_scene.instantiate() as FloatingDamageNumber
+	if not damage_number:
+		return
+	
+	# Add to the scene tree at the same level as characters
+	# This ensures it renders above characters but below UI
+	var combat_area = target.get_parent()
+	if combat_area:
+		combat_area.add_child(damage_number)
+		
+		# Position above the character's head
+		var head_offset = Vector2(0, -20)  # Closer to the character
+		damage_number.display_damage(damage_amount, target.global_position + head_offset)
 
 func _play_sound_effect() -> void:
 	"""Play the ability sound effect"""
