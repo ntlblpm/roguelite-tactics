@@ -47,15 +47,25 @@ func request_game_state() -> void:
 	if turn_manager:
 		turn_state = turn_manager.get_turn_state()
 	
+	# Get current enemy types for synchronization
+	var enemy_types: Array = []
+	var enemy_characters = spawn_manager.get_enemy_characters()
+	for enemy in enemy_characters:
+		if enemy and is_instance_valid(enemy):
+			# Extract enemy type from the name (e.g., "SkeletonKnight_0" -> "SkeletonKnight")
+			var enemy_name_parts = enemy.name.split("_")
+			if enemy_name_parts.size() > 0:
+				enemy_types.append(enemy_name_parts[0])
+	
 	# Send comprehensive game state specifically to the requesting player
-	receive_game_state.rpc_id(sender_id, players_data, character_states, turn_state)
+	receive_game_state.rpc_id(sender_id, players_data, character_states, turn_state, enemy_types)
 
 @rpc("authority", "call_local", "reliable")
-func receive_game_state(players_data: Array, character_states: Dictionary, turn_state: Dictionary) -> void:
+func receive_game_state(players_data: Array, character_states: Dictionary, turn_state: Dictionary, enemy_types: Array = []) -> void:
 	"""Receive and process game state from host (for late joiners)"""
 	
 	# Spawn all characters first
-	spawn_manager.spawn_all_characters(players_data)
+	spawn_manager.spawn_all_characters(players_data, enemy_types)
 	
 	# Wait for characters to be properly spawned
 	await spawn_manager.spawn_completed
@@ -75,14 +85,14 @@ func receive_game_state(players_data: Array, character_states: Dictionary, turn_
 	late_joiner_synced.emit(multiplayer.get_unique_id())
 
 @rpc("any_peer", "call_local", "reliable")
-func spawn_all_characters_rpc(players_data: Array) -> void:
+func spawn_all_characters_rpc(players_data: Array, enemy_types: Array = []) -> void:
 	"""Spawn characters for all players (called by host)"""
 	
 	# Only host should initiate character spawning to prevent conflicts
 	if multiplayer.get_remote_sender_id() != 1 and not NetworkManager.is_host:
 		return
 	
-	spawn_manager.spawn_all_characters(players_data)
+	spawn_manager.spawn_all_characters(players_data, enemy_types)
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_turn_sync() -> void:
@@ -129,8 +139,11 @@ func initiate_multiplayer_game(players: Array) -> void:
 			"class_levels": player_info.class_levels
 		})
 	
+	# Host generates enemy types to ensure synchronization
+	var enemy_types: Array = spawn_manager.generate_enemy_types(players.size())
+	
 	# Host spawns all characters and broadcasts to all clients
-	spawn_all_characters_rpc.rpc(players_data)
+	spawn_all_characters_rpc.rpc(players_data, enemy_types)
 
 func sync_initial_turn_state() -> void:
 	"""Sync initial turn state to all clients (called by host)"""

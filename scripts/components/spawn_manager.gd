@@ -55,7 +55,7 @@ func initialize(parent: Node2D) -> void:
 	if has_meta("enemy_spawns"):
 		dynamic_enemy_spawns = get_meta("enemy_spawns")
 
-func spawn_all_characters(players_data: Array) -> void:
+func spawn_all_characters(players_data: Array, enemy_types: Array = []) -> void:
 	"""Spawn characters for all players and enemies"""
 	if is_spawning_characters:
 		return
@@ -81,7 +81,7 @@ func spawn_all_characters(players_data: Array) -> void:
 		spawn_character(player_data.peer_id, player_data.selected_class, start_position)
 	
 	# Spawn enemies based on player count
-	spawn_enemies(players_data.size())
+	spawn_enemies_with_types(players_data.size(), enemy_types)
 	
 	is_spawning_characters = false
 	
@@ -120,41 +120,39 @@ func spawn_character(peer_id: int, character_class: String, grid_position: Vecto
 	
 	return character
 
-func spawn_enemies(player_count: int) -> void:
-	"""Spawn enemy characters based on player count"""
-	# Calculate total enemies: one skeleton per player + one random enemy
-	var total_enemies := player_count + 1
-	print("SpawnManager: Spawning enemies for %d players, total enemies: %d" % [player_count, total_enemies])
-	
+func spawn_enemies_with_types(player_count: int, enemy_types: Array) -> void:
+	"""Spawn enemy characters with predetermined types for multiplayer sync"""
 	# Use dynamic spawns if available, otherwise use default positions
 	var spawn_positions := dynamic_enemy_spawns if dynamic_enemy_spawns.size() > 0 else enemy_spawn_positions
-	print("SpawnManager: Available spawn positions: %d (dynamic: %d, default: %d)" % [spawn_positions.size(), dynamic_enemy_spawns.size(), enemy_spawn_positions.size()])
+	print("SpawnManager: Available spawn positions: %d" % spawn_positions.size())
 	
-	# Make sure we have enough spawn positions
-	if spawn_positions.size() < total_enemies:
-		push_warning("Not enough enemy spawn positions (%d) for %d enemies" % [spawn_positions.size(), total_enemies])
-		# Use as many as we have
-		total_enemies = spawn_positions.size()
+	# If enemy types weren't provided (host needs to generate them)
+	if enemy_types.is_empty() and multiplayer.is_server():
+		enemy_types = generate_enemy_types(player_count)
 	
-	var enemy_id := 0
-	
-	# Spawn one skeleton per player
-	for i in range(player_count):
-		if enemy_id < spawn_positions.size():
-			print("SpawnManager: Spawning Skeleton #%d at position %s" % [enemy_id, spawn_positions[enemy_id]])
-			spawn_enemy("Skeleton", spawn_positions[enemy_id], enemy_id)
-			enemy_id += 1
+	# Spawn enemies based on the provided types
+	for i in range(enemy_types.size()):
+		if i < spawn_positions.size():
+			print("SpawnManager: Spawning %s at position %s" % [enemy_types[i], spawn_positions[i]])
+			spawn_enemy(enemy_types[i], spawn_positions[i], i)
 		else:
-			print("SpawnManager: No more spawn positions for Skeleton #%d" % enemy_id)
+			push_warning("No spawn position available for enemy #%d" % i)
+
+func generate_enemy_types(player_count: int) -> Array:
+	"""Generate enemy types array (host only)"""
+	var types: Array = []
 	
-	# Spawn one random enemy from the other types
-	if enemy_id < spawn_positions.size():
-		var random_enemy_types: Array[String] = ["SkeletonKnight", "UndeadMage", "Spirit", "DarkLord"]
-		var random_type: String = random_enemy_types.pick_random()
-		print("SpawnManager: Spawning %s at position %s" % [random_type, spawn_positions[enemy_id]])
-		spawn_enemy(random_type, spawn_positions[enemy_id], enemy_id)
-	else:
-		print("SpawnManager: No spawn position available for random enemy")
+	# One skeleton per player
+	for i in range(player_count):
+		types.append("Skeleton")
+	
+	# One random enemy from the other types
+	var random_enemy_types: Array[String] = ["SkeletonKnight", "UndeadMage", "Spirit", "DarkLord"]
+	var random_type: String = random_enemy_types.pick_random()
+	types.append(random_type)
+	
+	print("SpawnManager (Host): Generated enemy types: %s" % str(types))
+	return types
 
 func spawn_enemy(enemy_type: String, grid_position: Vector2i, enemy_id: int) -> BaseCharacter:
 	"""Spawn a single enemy"""
