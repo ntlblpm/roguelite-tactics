@@ -1,10 +1,28 @@
-[gd_scene load_steps=9 format=4 uid="uid://dbomsc77r5x0v"]
+[gd_scene load_steps=11 format=4 uid="uid://dbomsc77r5x0v"]
 
 [ext_resource type="TileSet" uid="uid://dj336td0n3350" path="res://resources/layer1tileset.tres" id="1_1ahhd"]
 [ext_resource type="PackedScene" uid="uid://umx5wue4gs30" path="res://UIs/CombatUI.tscn" id="2_ayhjk"]
+[ext_resource type="Shader" uid="uid://ceim6sesg2apc" path="res://scenes/TestRoom.gdshader" id="2_gfl4d"]
 [ext_resource type="Shader" uid="uid://bx0jvbggnvsrq" path="res://scenes/CombatArea.gdshader" id="2_jclb3"]
 [ext_resource type="Script" uid="uid://cvq18dcn6g6kk" path="res://scripts/game_controller.gd" id="3_controller"]
 [ext_resource type="PackedScene" uid="uid://bxk5dl7h8vwqr" path="res://UIs/LoadingOverlay.tscn" id="4_cyagc"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6q47c"]
+shader = ExtResource("2_gfl4d")
+shader_parameter/horizontalMovement = 0.1
+shader_parameter/verticalMovement = 0.1
+shader_parameter/frequencyStar = 0.03
+shader_parameter/sizeStar = 100.0
+shader_parameter/brightnessStar = 3.0
+shader_parameter/shineFrequencyStar = 8.0
+shader_parameter/transparencyStar = 0.0
+shader_parameter/starIterations = 3
+shader_parameter/frequencyBgStar = 0.996
+shader_parameter/shineFrequencyBgStar = 1.0
+shader_parameter/transparencyBgStar = 0.0
+shader_parameter/colorBackground = Color(0.05, 0.04, 0.2, 1)
+shader_parameter/transparencyBackground = 0.0
+shader_parameter/seed = 0.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_6q47c"]
 
@@ -20,6 +38,14 @@ shader_parameter/speed = Vector2(0.02, 0.01)
 
 [node name="TestRoom" type="Node2D"]
 script = ExtResource("3_controller")
+
+[node name="TextureRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_6q47c")
+offset_left = -332.785
+offset_top = -168.56
+offset_right = 947.215
+offset_bottom = 551.44
+scale = Vector2(0.5, 0.5)
 
 [node name="CombatArea" type="Node2D" parent="."]
 y_sort_enabled = true
