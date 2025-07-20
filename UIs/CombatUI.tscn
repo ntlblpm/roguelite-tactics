@@ -1,7 +1,12 @@
-[gd_scene load_steps=3 format=3 uid="uid://umx5wue4gs30"]
+[gd_scene load_steps=8 format=3 uid="uid://umx5wue4gs30"]
 
 [ext_resource type="Script" uid="uid://rruj85y2avvm" path="res://UIs/chat_panel.gd" id="1_6m8j6"]
 [ext_resource type="Script" uid="uid://co8wi8wl1p6dx" path="res://UIs/turn_order_panel.gd" id="2_wnapn"]
+[ext_resource type="Script" uid="uid://bss8yvv6twew2" path="res://UIs/stat_display_panel.gd" id="3_stat"]
+[ext_resource type="Script" uid="uid://x34b2rufnepi" path="res://UIs/hp_display_panel.gd" id="4_hp"]
+[ext_resource type="Script" uid="uid://brtkfy4jv3l2b" path="res://UIs/ap_display_panel.gd" id="5_ap"]
+[ext_resource type="Script" uid="uid://ctlg3wlocfy2c" path="res://UIs/mp_display_panel.gd" id="6_mp"]
+[ext_resource type="Script" uid="uid://ct2ihvuux1cuf" path="res://UIs/ability_button.gd" id="7_ability"]
 
 [node name="CombatUI" type="Control"]
 layout_mode = 3
@@ -85,6 +90,7 @@ offset_left = -39.785
 offset_top = -157.0
 offset_right = -205.865
 offset_bottom = -10.0
+script = ExtResource("3_stat")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="UILayer/MainUI/StatDisplay"]
 layout_mode = 1
@@ -101,27 +107,28 @@ grow_vertical = 2
 [node name="HPDisplay" type="Panel" parent="UILayer/MainUI/StatDisplay/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+script = ExtResource("4_hp")
 
-[node name="HPContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay"]
+[node name="HPProgressBar" type="ProgressBar" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay"]
+modulate = Color(1, 0.317647, 0.333333, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+value = 100.0
+show_percentage = false
 
-[node name="HeartIcon" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-theme_override_font_sizes/font_size = 24
-text = "♥"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="HPText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "100/100"
+[node name="HPText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "HP:   100/100"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -132,6 +139,7 @@ size_flags_vertical = 3
 [node name="APDisplay" type="Panel" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("5_ap")
 
 [node name="APContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay"]
 layout_mode = 1
@@ -141,24 +149,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LightningIcon" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay/APContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-theme_override_font_sizes/font_size = 24
-text = "⚡"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="APText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay/APContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "6/6"
+theme_override_colors/font_color = Color(0.160784, 0.6, 1, 1)
+text = "AP:  6/6"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="MPDisplay" type="Panel" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+script = ExtResource("6_mp")
 
 [node name="MPContainer" type="HBoxContainer" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay"]
 layout_mode = 1
@@ -168,18 +170,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ShoeIcon" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay/MPContainer"]
-layout_mode = 2
-size_flags_horizontal = 0
-theme_override_font_sizes/font_size = 24
-text = "👟"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="MPText" type="Label" parent="UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay/MPContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "3/3"
+theme_override_colors/font_color = Color(0, 1, 0, 1)
+text = "MP:  3/3"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -222,36 +217,42 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "1"
+script = ExtResource("7_ability")
 
 [node name="Ability2" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "2"
+script = ExtResource("7_ability")
 
 [node name="Ability3" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "3"
+script = ExtResource("7_ability")
 
 [node name="Ability4" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "4"
+script = ExtResource("7_ability")
 
 [node name="Ability5" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "5"
+script = ExtResource("7_ability")
 
 [node name="Ability6" type="Button" parent="UILayer/MainUI/AbilityBar/AbilityContainer/AbilityGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "6"
+script = ExtResource("7_ability")
 
 [node name="FightControls" type="Panel" parent="UILayer/MainUI"]
 layout_mode = 1

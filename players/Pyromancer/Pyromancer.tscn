@@ -4033,5 +4033,4 @@ damage = 30
 ap_cost = 6
 range = 2
 animation = "Special1"
-cooldown = 1
 metadata/_custom_type_script = "uid://bh56fgehx2jk"

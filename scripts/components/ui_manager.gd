@@ -10,8 +10,11 @@ signal end_turn_requested()
 # UI references
 var combat_ui: Control
 var hp_text: Label
+var hp_progress_bar: ProgressBar
 var ap_text: Label
 var mp_text: Label
+var ap_display_panel: Panel
+var mp_display_panel: Panel
 var end_turn_button: Button
 var give_up_button: Button
 var chat_panel: ChatPanel
@@ -47,9 +50,12 @@ func _setup_ui_references() -> void:
 		push_error("UIManager: Failed to load TurnOrderSlot.tscn")
 		
 	# Get stat display elements
-	hp_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPContainer/HPText")
+	hp_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPText")
+	hp_progress_bar = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HPDisplay/HPProgressBar")
 	ap_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay/APContainer/APText")
 	mp_text = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay/MPContainer/MPText")
+	ap_display_panel = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/APDisplay")
+	mp_display_panel = combat_ui.get_node("UILayer/MainUI/StatDisplay/VBoxContainer/HBoxContainer/MPDisplay")
 	
 	# Get control elements
 	end_turn_button = combat_ui.get_node("UILayer/MainUI/FightControls/ButtonContainer/EndTurnBtn")
@@ -83,26 +89,42 @@ func _setup_ui_references() -> void:
 func update_stats(hp_current: int, hp_max: int, mp_current: int, mp_max: int, ap_current: int, ap_max: int) -> void:
 	"""Update all stat displays"""
 	if hp_text:
-		hp_text.text = "%d/%d" % [hp_current, hp_max]
+		hp_text.text = "HP:   %d/%d" % [hp_current, hp_max]
+	if hp_progress_bar:
+		hp_progress_bar.max_value = hp_max
+		hp_progress_bar.value = hp_current
 	if mp_text:
-		mp_text.text = "%d/%d" % [mp_current, mp_max]
+		mp_text.text = "MP:  %d/%d" % [mp_current, mp_max]
 	if ap_text:
-		ap_text.text = "%d/%d" % [ap_current, ap_max]
+		ap_text.text = "AP:  %d/%d" % [ap_current, ap_max]
+	
+	# Update discrete bar displays
+	if ap_display_panel and ap_display_panel.has_method("update_ap_display"):
+		ap_display_panel.update_ap_display(ap_current, ap_max)
+	if mp_display_panel and mp_display_panel.has_method("update_mp_display"):
+		mp_display_panel.update_mp_display(mp_current, mp_max)
 
 func update_hp_display(current: int, maximum: int) -> void:
 	"""Update HP display"""
 	if hp_text:
-		hp_text.text = "%d/%d" % [current, maximum]
+		hp_text.text = "HP:   %d/%d" % [current, maximum]
+	if hp_progress_bar:
+		hp_progress_bar.max_value = maximum
+		hp_progress_bar.value = current
 
 func update_mp_display(current: int, maximum: int) -> void:
 	"""Update MP display"""
 	if mp_text:
-		mp_text.text = "%d/%d" % [current, maximum]
+		mp_text.text = "MP:  %d/%d" % [current, maximum]
+	if mp_display_panel and mp_display_panel.has_method("update_mp_display"):
+		mp_display_panel.update_mp_display(current, maximum)
 
 func update_ap_display(current: int, maximum: int) -> void:
 	"""Update AP display"""
 	if ap_text:
-		ap_text.text = "%d/%d" % [current, maximum]
+		ap_text.text = "AP:  %d/%d" % [current, maximum]
+	if ap_display_panel and ap_display_panel.has_method("update_ap_display"):
+		ap_display_panel.update_ap_display(current, maximum)
 
 func add_system_message(message: String) -> void:
 	"""Add a system message to the chat panel"""

@@ -10650,5 +10650,4 @@ ap_cost = 5
 range = 2
 take_damage_delay = 0.2
 animation = "Attack4"
-cooldown = 1
 metadata/_custom_type_script = "uid://bh56fgehx2jk"

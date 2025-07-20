@@ -10645,7 +10645,6 @@ damage = 20
 ap_cost = 6
 take_damage_delay = 0.4
 animation = "Attack2"
-cooldown = 1
 metadata/_custom_type_script = "uid://bh56fgehx2jk"
 
 [node name="A2_Overhead Strike" type="Node" parent="."]
