@@ -27,6 +27,9 @@ signal spawn_completed()
 	Vector2i(2, -2)    # Player 3
 ]
 
+# Grid manager reference (set by GameController)
+var grid_manager: GridManager
+
 # Starting positions for enemies
 @export var enemy_spawn_positions: Array[Vector2i] = [
 	Vector2i(3, -1),    # Top right area
@@ -91,6 +94,20 @@ func spawn_all_characters(players_data: Array, enemy_types: Array = []) -> void:
 
 func spawn_character(peer_id: int, character_class: String, grid_position: Vector2i) -> BaseCharacter:
 	"""Spawn a character for a specific player"""
+	print("[SpawnManager] spawn_character called for peer %d, class %s at position %s" % [peer_id, character_class, grid_position])
+	
+	# Validate spawn position if grid manager is available
+	if grid_manager:
+		print("[SpawnManager] Validating spawn position %s with grid manager" % grid_position)
+		if not grid_manager.is_position_walkable(grid_position):
+			push_warning("[SpawnManager] Position %s is not walkable, finding nearest walkable tile" % grid_position)
+			grid_position = _find_nearest_walkable_position(grid_position, grid_manager)
+			print("[SpawnManager] New spawn position after validation: %s" % grid_position)
+		else:
+			print("[SpawnManager] Position %s is walkable, proceeding with spawn" % grid_position)
+	else:
+		push_warning("[SpawnManager] GridManager reference not set, spawning without position validation")
+	
 	var character_scene: PackedScene = get_character_scene(character_class)
 	
 	if not character_scene:
@@ -156,6 +173,20 @@ func generate_enemy_types(player_count: int) -> Array:
 
 func spawn_enemy(enemy_type: String, grid_position: Vector2i, enemy_id: int) -> BaseCharacter:
 	"""Spawn a single enemy"""
+	print("[SpawnManager] spawn_enemy called for type %s at position %s" % [enemy_type, grid_position])
+	
+	# Validate spawn position if grid manager is available
+	if grid_manager:
+		print("[SpawnManager] Validating enemy spawn position %s with grid manager" % grid_position)
+		if not grid_manager.is_position_walkable(grid_position):
+			push_warning("[SpawnManager] Enemy position %s is not walkable, finding nearest walkable tile" % grid_position)
+			grid_position = _find_nearest_walkable_position(grid_position, grid_manager)
+			print("[SpawnManager] New enemy spawn position after validation: %s" % grid_position)
+		else:
+			print("[SpawnManager] Enemy position %s is walkable, proceeding with spawn" % grid_position)
+	else:
+		push_warning("[SpawnManager] GridManager reference not set, spawning enemy without position validation")
+	
 	var enemy_scene: PackedScene = get_enemy_scene(enemy_type)
 	
 	if not enemy_scene:
@@ -254,3 +285,34 @@ func get_all_characters() -> Array[BaseCharacter]:
 	for enemy in spawned_enemy_characters:
 		characters.append(enemy)
 	return characters
+
+func _find_nearest_walkable_position(position: Vector2i, grid_manager: Node) -> Vector2i:
+	"""Find the nearest walkable position to the given position using a spiral search"""
+	print("[SpawnManager] Finding nearest walkable position to %s" % position)
+	
+	# Check if the current position is already walkable
+	if grid_manager.is_position_walkable(position):
+		print("[SpawnManager] Position %s is already walkable" % position)
+		return position
+	
+	# Search in expanding rings around the position
+	var positions_checked := 0
+	for radius in range(1, 10):  # Search up to 10 tiles away
+		print("[SpawnManager] Checking radius %d around position %s" % [radius, position])
+		# Check all positions at this radius
+		for dx in range(-radius, radius + 1):
+			for dy in range(-radius, radius + 1):
+				# Only check positions on the ring edge
+				if abs(dx) == radius or abs(dy) == radius:
+					var check_pos := Vector2i(position.x + dx, position.y + dy)
+					positions_checked += 1
+					var is_walkable = grid_manager.is_position_walkable(check_pos)
+					if positions_checked <= 20:  # Only print first 20 to avoid spam
+						print("[SpawnManager] Checking position %s: walkable=%s" % [check_pos, is_walkable])
+					if is_walkable:
+						print("[SpawnManager] Found walkable position %s after checking %d positions" % [check_pos, positions_checked])
+						return check_pos
+	
+	# If no walkable position found, return original (will likely cause issues)
+	push_error("[SpawnManager] Could not find any walkable position near %s after checking %d positions" % [position, positions_checked])
+	return position

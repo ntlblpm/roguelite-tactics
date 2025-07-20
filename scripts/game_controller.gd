@@ -65,11 +65,20 @@ func _initialize_systems() -> void:
 
 func _initialize_components() -> void:
 	"""Initialize all component managers"""
+	print("[GameController] Initializing components")
+	
 	# Create spawn manager
 	spawn_manager = SpawnManager.new()
 	spawn_manager.name = "SpawnManager"
 	add_child(spawn_manager)
+	print("[GameController] SpawnManager created and added as child")
+	
+	# Debug: Print the spawn manager's path
+	print("[GameController] SpawnManager path: %s" % spawn_manager.get_path())
+	
 	spawn_manager.initialize($CombatArea)
+	spawn_manager.grid_manager = grid_manager  # Pass grid manager reference directly
+	print("[GameController] SpawnManager initialized with CombatArea and grid_manager reference")
 	
 	# Create UI manager
 	ui_manager = UIManager.new()
@@ -166,30 +175,51 @@ func _generate_room_with_loading() -> void:
 
 func _initialize_multiplayer_game() -> void:
 	"""Initialize the multiplayer game based on NetworkManager data"""
+	print("[GameController] _initialize_multiplayer_game called")
+	
 	if not NetworkManager or not NetworkManager.connected:
+		print("[GameController] NetworkManager not available or not connected")
 		return
+	
+	# Connect grid manager to tilemap BEFORE spawning to ensure proper terrain validation
+	print("[GameController] Checking tilemap_layer: %s" % tilemap_layer)
+	print("[GameController] Checking grid_manager: %s" % grid_manager)
+	
+	if tilemap_layer and grid_manager:
+		print("[GameController] Connecting grid_manager to tilemap_layer")
+		grid_manager.set_tilemap_layer(tilemap_layer)
+		
+		# Wait a frame to ensure tilemap data is ready
+		await get_tree().process_frame
+		print("[GameController] Grid manager connected to tilemap, proceeding with spawn")
+	else:
+		push_error("[GameController] Missing tilemap_layer or grid_manager!")
 	
 	# Get player data from NetworkManager
 	var players = NetworkManager.get_players_list()
+	print("[GameController] Players list: %s" % str(players))
 	
 	if NetworkManager.is_host:
+		print("[GameController] Host initiating character spawning")
 		# Host initiates character spawning
 		network_sync_manager.initiate_multiplayer_game(players)
 		
 		# Wait for spawning to complete
 		await spawn_manager.spawn_completed
+		print("[GameController] Host spawning completed")
 	else:
+		print("[GameController] Client waiting for character spawning from host")
 		# Joining player - wait for character spawning from host
 		await spawn_manager.spawn_completed
+		print("[GameController] Client spawning completed")
 	
 	# Now connect systems with guaranteed character availability
+	print("[GameController] Connecting systems")
 	_connect_systems()
 
 func _connect_systems() -> void:
 	"""Connect all systems together after characters are spawned"""
-	# Connect grid manager to tilemap
-	if tilemap_layer:
-		grid_manager.set_tilemap_layer(tilemap_layer)
+	# Grid manager is already connected to tilemap in _initialize_multiplayer_game
 	
 	# Get spawned characters
 	var player_characters = spawn_manager.get_player_characters()
@@ -628,8 +658,10 @@ func _receive_room_data(room_data: Dictionary) -> void:
 
 func _apply_room_data_to_tilemap(room_data: Dictionary) -> void:
 	"""Apply generated room data to the tilemap"""
+	print("[GameController] Applying room data to tilemap")
+	
 	if not tilemap_layer:
-		push_error("No tilemap layer found")
+		push_error("[GameController] No tilemap layer found")
 		return
 	
 	# Clear existing tiles
@@ -647,3 +679,5 @@ func _apply_room_data_to_tilemap(room_data: Dictionary) -> void:
 			var map_y := y - room_size / 2
 			tilemap_layer.set_cell(Vector2i(map_x, map_y), 1, atlas_coords)  # source_id = 1
 			tile_index += 1
+	
+	print("[GameController] Room data applied to tilemap")

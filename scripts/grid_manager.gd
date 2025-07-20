@@ -57,7 +57,18 @@ func _setup_grid_borders_system() -> void:
 
 func set_tilemap_layer(layer: TileMapLayer) -> void:
 	"""Set the reference to the TileMapLayer"""
+	print("[GridManager] Setting tilemap layer: %s" % layer)
 	tilemap_layer = layer
+	
+	# Debug: Check a few tile positions to see if tilemap data is ready
+	if tilemap_layer:
+		print("[GridManager] Checking sample tiles after tilemap layer set:")
+		for pos in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var tile_data = tilemap_layer.get_cell_tile_data(pos)
+			if tile_data:
+				print("[GridManager] Tile at %s: terrain_set=%d, terrain=%d" % [pos, tile_data.terrain_set, tile_data.terrain])
+			else:
+				print("[GridManager] No tile data at %s" % pos)
 
 func refresh_pathfinding_grid() -> void:
 	"""Refresh the pathfinding grid to match current tilemap state"""
@@ -97,17 +108,25 @@ func is_position_valid(grid_position: Vector2i) -> bool:
 
 func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharacter = null) -> bool:
 	"""Check if a grid position is walkable (not blocked by obstacles or characters)"""
+	var debug_spawn = moving_character == null  # Debug when checking for spawn positions
+	
 	if not tilemap_layer:
+		if debug_spawn:
+			print("[GridManager] No tilemap layer set, using position validity check for %s" % grid_position)
 		return is_position_valid(grid_position)
 	
 	# Check if position is valid first
 	if not is_position_valid(grid_position):
+		if debug_spawn:
+			print("[GridManager] Position %s is outside valid grid bounds" % grid_position)
 		return false
 	
 	# Check if position is occupied by a character (but allow the moving character to pass through their own position)
 	if is_position_occupied_by_character(grid_position):
 		var occupying_character = get_character_at_position(grid_position)
 		if occupying_character != moving_character:
+			if debug_spawn:
+				print("[GridManager] Position %s is occupied by character %s" % [grid_position, occupying_character.name if occupying_character else "unknown"])
 			return false
 	
 	# Get tile data at position
@@ -115,6 +134,8 @@ func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharact
 	
 	# If no tile data, position is not walkable
 	if not tile_data:
+		if debug_spawn:
+			print("[GridManager] No tile data at position %s - not walkable" % grid_position)
 		return false
 	
 	# Check terrain type - terrain 0 is walkable, terrain 1 is blocked for all terrain sets
@@ -122,14 +143,22 @@ func is_position_walkable(grid_position: Vector2i, moving_character: BaseCharact
 	var terrain_set: int = tile_data.terrain_set
 	var terrain: int = tile_data.terrain
 	
+	if debug_spawn:
+		print("[GridManager] Tile at %s has terrain_set=%d, terrain=%d" % [grid_position, terrain_set, terrain])
+	
 	# Ensure terrain set is valid (should be 0-4 based on tileset configuration)
 	if terrain_set < 0 or terrain_set > 4:
+		if debug_spawn:
+			print("[GridManager] Invalid terrain set %d at position %s" % [terrain_set, grid_position])
 		return false
 	
 	# For all terrain sets in the isometric tileset:
 	# - terrain 0 = "Pathable" or walkable terrain
 	# - terrain 1 = "Non-pathable" or blocked terrain
-	return terrain == 0
+	var is_walkable = terrain == 0
+	if debug_spawn:
+		print("[GridManager] Position %s walkability: %s (terrain=%d)" % [grid_position, is_walkable, terrain])
+	return is_walkable
 
 func _is_terrain_walkable(grid_position: Vector2i) -> bool:
 	"""Check if a grid position has walkable terrain (ignoring characters)"""
