@@ -23,6 +23,12 @@ var network_sync_manager: NetworkSyncManager
 var current_player_id: int = -1
 
 func _ready() -> void:
+	# Check if room data was set by the loading screen
+	if has_meta("room_data"):
+		var room_data = get_meta("room_data")
+		# Room data will be used by spawn manager when it initializes
+		print("GameController: Using procedurally generated room data")
+	
 	_initialize_systems()
 	_initialize_components()
 	_connect_component_signals()
@@ -116,7 +122,47 @@ func _deferred_multiplayer_initialization() -> void:
 	# Wait one more frame to ensure scene is fully ready
 	await get_tree().process_frame
 	
+	# If host and no room data exists, generate it
+	if NetworkManager.is_host and not has_meta("room_data"):
+		await _generate_room_with_loading()
+	
 	_initialize_multiplayer_game()
+
+func _generate_room_with_loading() -> void:
+	"""Host generates room data and sends loading updates to clients"""
+	# Send loading screen start signal to all clients
+	_show_loading_screen.rpc()
+	
+	# Show local loading UI
+	_update_loading_progress(0.1, "Generating room layout...")
+	await get_tree().create_timer(0.1).timeout
+	
+	# Generate room data
+	var room_data = RoomGenerator.generate()
+	set_meta("room_data", room_data)
+	
+	# Send progress update
+	_update_loading_progress.rpc(0.3, "Creating battlefield...")
+	await get_tree().create_timer(0.1).timeout
+	
+	# Send room data to all clients
+	_receive_room_data.rpc(room_data)
+	
+	_update_loading_progress.rpc(0.5, "Preparing terrain...")
+	await get_tree().create_timer(0.1).timeout
+	
+	# Apply room data locally
+	_apply_room_data_to_tilemap(room_data)
+	
+	_update_loading_progress.rpc(0.8, "Positioning combatants...")
+	await get_tree().create_timer(0.1).timeout
+	
+	# Final update
+	_update_loading_progress.rpc(1.0, "Entering combat!")
+	await get_tree().create_timer(0.2).timeout
+	
+	# Hide loading UI
+	_hide_loading_screen.rpc()
 
 func _initialize_multiplayer_game() -> void:
 	"""Initialize the multiplayer game based on NetworkManager data"""
@@ -535,3 +581,79 @@ func _toggle_grid_borders() -> void:
 	"""Toggle grid border visibility"""
 	if grid_manager:
 		grid_manager.toggle_grid_borders()
+
+# Loading screen RPCs
+@rpc("call_local", "authority", "reliable")
+func _show_loading_screen() -> void:
+	"""Show loading screen UI"""
+	if combat_ui and combat_ui.has_node("LoadingOverlay"):
+		var loading_overlay = combat_ui.get_node("LoadingOverlay")
+		loading_overlay.visible = true
+
+@rpc("call_local", "authority", "reliable")
+func _hide_loading_screen() -> void:
+	"""Hide loading screen UI"""
+	if combat_ui and combat_ui.has_node("LoadingOverlay"):
+		var loading_overlay = combat_ui.get_node("LoadingOverlay")
+		loading_overlay.visible = false
+
+@rpc("call_local", "authority", "reliable")
+func _update_loading_progress(progress: float, status: String) -> void:
+	"""Update loading screen progress"""
+	if combat_ui and combat_ui.has_node("LoadingOverlay"):
+		var loading_overlay = combat_ui.get_node("LoadingOverlay")
+		if loading_overlay.has_node("VBoxContainer/ProgressBar"):
+			var progress_bar = loading_overlay.get_node("VBoxContainer/ProgressBar")
+			progress_bar.value = progress
+		if loading_overlay.has_node("VBoxContainer/StatusLabel"):
+			var status_label = loading_overlay.get_node("VBoxContainer/StatusLabel")
+			status_label.text = status
+
+@rpc("call_local", "authority", "reliable")
+func _receive_room_data(room_data: Dictionary) -> void:
+	"""Receive and apply room data from host"""
+	set_meta("room_data", room_data)
+	
+	# Apply to tilemap if we're a client
+	if not NetworkManager.is_host:
+		_apply_room_data_to_tilemap(room_data)
+	
+	# Update spawn manager with new spawn positions
+	if spawn_manager and room_data.has("player_spawns") and room_data.has("enemy_spawns"):
+		var room_size := 13  # From RoomGenerator.ROOM_SIZE
+		
+		# Convert spawn positions to centered coordinates
+		var centered_player_spawns := []
+		for spawn in room_data.player_spawns:
+			var centered_spawn := Vector2i(spawn.x - room_size / 2, spawn.y - room_size / 2)
+			centered_player_spawns.append(centered_spawn)
+		
+		var centered_enemy_spawns := []
+		for spawn in room_data.enemy_spawns:
+			var centered_spawn := Vector2i(spawn.x - room_size / 2, spawn.y - room_size / 2)
+			centered_enemy_spawns.append(centered_spawn)
+		
+		spawn_manager.set_meta("player_spawns", centered_player_spawns)
+		spawn_manager.set_meta("enemy_spawns", centered_enemy_spawns)
+
+func _apply_room_data_to_tilemap(room_data: Dictionary) -> void:
+	"""Apply generated room data to the tilemap"""
+	if not tilemap_layer:
+		push_error("No tilemap layer found")
+		return
+	
+	# Clear existing tiles
+	tilemap_layer.clear()
+	
+	# Apply generated tiles
+	var room_size := 13  # From RoomGenerator.ROOM_SIZE
+	var tile_index := 0
+	
+	for y in room_size:
+		for x in room_size:
+			var atlas_coords := room_data.tile_atlas_coords[tile_index] as Vector2i
+			# Adjust coordinates for the tilemap (centered at 0,0)
+			var map_x := x - room_size / 2
+			var map_y := y - room_size / 2
+			tilemap_layer.set_cell(Vector2i(map_x, map_y), 1, atlas_coords)  # source_id = 1
+			tile_index += 1

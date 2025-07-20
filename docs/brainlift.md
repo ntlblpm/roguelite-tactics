@@ -4,6 +4,7 @@ d2: learned godot and got assets and animations
 d3: set up first room
 d4: multiplayer things
 d5: multiplayer things, more assets
+d6: bugfixes, ui updates, fight and game end handling, procedural generation for variation
 
 ai interactions: asking claude how to use godot and having it set up animations for me (huge)
 

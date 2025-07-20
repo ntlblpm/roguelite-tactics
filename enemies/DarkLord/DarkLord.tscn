@@ -1,5 +1,6 @@
-[gd_scene load_steps=1471 format=3 uid="uid://cpf3tu0vpjcxo"]
+[gd_scene load_steps=1472 format=3 uid="uid://cpf3tu0vpjcxo"]
 
+[ext_resource type="Script" uid="uid://bh1jye073rlnl" path="res://enemies/DarkLord/dark_lord.gd" id="1_4f5l5"]
 [ext_resource type="Texture2D" uid="uid://bf3n57cvqqyf5" path="res://assets/entities/dark lord/Idle.png" id="1_idle"]
 [ext_resource type="Texture2D" uid="uid://cgdbtmmjdbsru" path="res://assets/entities/dark lord/Walk.png" id="2_walk"]
 [ext_resource type="Texture2D" uid="uid://chihshp5vtgyv" path="res://assets/entities/dark lord/Attack1.png" id="3_attack1"]
@@ -10599,6 +10600,7 @@ polygon = PackedVector2Array(-9, -1, -9, -15, 10, -15, 10, 1, 1, 3)
 
 [node name="DarkLord" type="CharacterBody2D"]
 scale = Vector2(0.5, 0.5)
+script = ExtResource("1_4f5l5")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)

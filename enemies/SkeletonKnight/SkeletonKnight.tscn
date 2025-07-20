@@ -1,5 +1,6 @@
-[gd_scene load_steps=1471 format=3 uid="uid://dh7ottvud4ko7"]
+[gd_scene load_steps=1472 format=3 uid="uid://dh7ottvud4ko7"]
 
+[ext_resource type="Script" uid="uid://of3bbe2ohy3w" path="res://enemies/SkeletonKnight/skeleton_knight.gd" id="1_l817s"]
 [ext_resource type="Texture2D" uid="uid://3fegfimkhjel" path="res://assets/entities/skeleton knight/Idle.png" id="4_idle"]
 [ext_resource type="Texture2D" uid="uid://dbbeat17ynqga" path="res://assets/entities/skeleton knight/Walk.png" id="5_walk"]
 [ext_resource type="Texture2D" uid="uid://bk620okdxswf4" path="res://assets/entities/skeleton knight/Run.png" id="6_run"]
@@ -10599,6 +10600,7 @@ polygon = PackedVector2Array(-9, -1, -9, -15, 10, -15, 10, 1, 1, 3)
 
 [node name="SkeletonKnight" type="CharacterBody2D"]
 scale = Vector2(0.5, 0.5)
+script = ExtResource("1_l817s")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 position = Vector2(0, -20)

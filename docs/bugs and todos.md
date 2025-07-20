@@ -1,12 +1,15 @@
 ## bugs
 
-- death animation isn't playing for players 
 - enemies don't use all their ap, just attack once and then end turn
+- fix room generation: 
+    - terrain set seems to just be brown and green ones
+    - enemy spawning is wrong
 
 ## todos
 
 - ui improvements everywhere
-- add more enemies to test room
+- ability tooltips
+- floating damage numbers
 
 later:
 - roguelite procedural generation of room+enemy layouts

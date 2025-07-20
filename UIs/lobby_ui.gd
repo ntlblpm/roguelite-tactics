@@ -290,7 +290,7 @@ func _on_disconnected_from_server() -> void:
 
 func _on_game_started() -> void:
 	"""Handle when the game starts"""
-	# Transition to TestRoom scene
+	# Transition directly to combat scene - room generation will happen there
 	get_tree().change_scene_to_file("res://scenes/TestRoom.tscn")
 
 func _on_back_pressed() -> void:

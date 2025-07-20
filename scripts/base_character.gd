@@ -68,6 +68,9 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	"""Cleanup when the character is being destroyed"""
+	# Set multiplayer authority to server before cleanup to prevent RPC errors
+	if multiplayer and multiplayer.has_multiplayer_peer():
+		set_multiplayer_authority(1)
 	
 	# Stop any running tweens
 	if movement_tween and movement_tween.is_valid():
@@ -81,8 +84,8 @@ func _exit_tree() -> void:
 	# Disconnect turn manager signals
 	_disconnect_turn_signals()
 	
-	# Unregister from grid manager
-	if grid_manager:
+	# Unregister from grid manager if not already done
+	if grid_manager and is_instance_valid(grid_manager):
 		grid_manager.unregister_character(self)
 	
 	# Clear references
@@ -497,9 +500,13 @@ func request_death() -> void:
 	# Host authorizes death and broadcasts to all peers
 	_start_death_sequence.rpc()
 
-@rpc("authority", "call_local", "reliable")
+@rpc("any_peer", "call_local", "reliable")
 func _start_death_sequence() -> void:
 	"""Start the death sequence on all peers"""
+	# Only accept death sequence from host
+	if multiplayer.get_remote_sender_id() != 0 and multiplayer.get_remote_sender_id() != 1:
+		return
+		
 	if is_dead:
 		return
 	
@@ -545,6 +552,9 @@ func _do_death_sequence() -> void:
 	
 	# Let subclasses do custom cleanup
 	_handle_death()
+	
+	# Wait a frame to ensure all RPCs complete before removing the node
+	await get_tree().process_frame
 	
 	# Remove from scene
 	queue_free()

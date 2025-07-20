@@ -15,6 +15,10 @@ signal spawn_completed()
 
 # Scene references for enemies
 @export var skeleton_scene: PackedScene = preload("res://enemies/Skeleton/Skeleton.tscn")
+@export var skeleton_knight_scene: PackedScene = preload("res://enemies/SkeletonKnight/SkeletonKnight.tscn")
+@export var undead_mage_scene: PackedScene = preload("res://enemies/UndeadMage/UndeadMage.tscn")
+@export var spirit_scene: PackedScene = preload("res://enemies/Spirit/Spirit.tscn")
+@export var dark_lord_scene: PackedScene = preload("res://enemies/DarkLord/DarkLord.tscn")
 
 # Starting positions for players
 @export var starting_positions: Array[Vector2i] = [
@@ -25,8 +29,16 @@ signal spawn_completed()
 
 # Starting positions for enemies
 @export var enemy_spawn_positions: Array[Vector2i] = [
-	Vector2i(3, -1)    # Single skeleton in top right area
+	Vector2i(3, -1),    # Top right area
+	Vector2i(-3, 1),   # Bottom left area
+	Vector2i(1, 3),    # Bottom right area
+	Vector2i(-1, -3),  # Top left area
+	Vector2i(4, 4)     # Far corner
 ]
+
+# Dynamic spawn positions (can be set via room generation)
+var dynamic_player_spawns: Array[Vector2i] = []
+var dynamic_enemy_spawns: Array[Vector2i] = []
 
 var spawn_parent: Node2D
 var is_spawning_characters: bool = false
@@ -36,6 +48,12 @@ var spawned_enemy_characters: Array[BaseCharacter] = []
 func initialize(parent: Node2D) -> void:
 	"""Initialize the spawn manager with a parent node for spawned entities"""
 	spawn_parent = parent
+	
+	# Check if dynamic spawn positions were set from room generation
+	if has_meta("player_spawns"):
+		dynamic_player_spawns = get_meta("player_spawns")
+	if has_meta("enemy_spawns"):
+		dynamic_enemy_spawns = get_meta("enemy_spawns")
 
 func spawn_all_characters(players_data: Array) -> void:
 	"""Spawn characters for all players and enemies"""
@@ -50,13 +68,20 @@ func spawn_all_characters(players_data: Array) -> void:
 	# Spawn player characters
 	for i in range(players_data.size()):
 		var player_data = players_data[i]
-		var position_index = i % starting_positions.size()
-		var start_position = starting_positions[position_index]
+		var start_position: Vector2i
+		
+		# Use dynamic spawns if available, otherwise use default positions
+		if dynamic_player_spawns.size() > 0:
+			var position_index = i % dynamic_player_spawns.size()
+			start_position = dynamic_player_spawns[position_index]
+		else:
+			var position_index = i % starting_positions.size()
+			start_position = starting_positions[position_index]
 		
 		spawn_character(player_data.peer_id, player_data.selected_class, start_position)
 	
-	# Spawn enemies
-	spawn_enemies()
+	# Spawn enemies based on player count
+	spawn_enemies(players_data.size())
 	
 	is_spawning_characters = false
 	
@@ -95,12 +120,41 @@ func spawn_character(peer_id: int, character_class: String, grid_position: Vecto
 	
 	return character
 
-func spawn_enemies() -> void:
-	"""Spawn enemy characters"""
-	# Spawn skeletons at predefined positions
-	for i in range(min(1, enemy_spawn_positions.size())):  # Spawn up to 1 skeleton
-		var spawn_position = enemy_spawn_positions[i]
-		spawn_enemy("Skeleton", spawn_position, i)
+func spawn_enemies(player_count: int) -> void:
+	"""Spawn enemy characters based on player count"""
+	# Calculate total enemies: one skeleton per player + one random enemy
+	var total_enemies := player_count + 1
+	print("SpawnManager: Spawning enemies for %d players, total enemies: %d" % [player_count, total_enemies])
+	
+	# Use dynamic spawns if available, otherwise use default positions
+	var spawn_positions := dynamic_enemy_spawns if dynamic_enemy_spawns.size() > 0 else enemy_spawn_positions
+	print("SpawnManager: Available spawn positions: %d (dynamic: %d, default: %d)" % [spawn_positions.size(), dynamic_enemy_spawns.size(), enemy_spawn_positions.size()])
+	
+	# Make sure we have enough spawn positions
+	if spawn_positions.size() < total_enemies:
+		push_warning("Not enough enemy spawn positions (%d) for %d enemies" % [spawn_positions.size(), total_enemies])
+		# Use as many as we have
+		total_enemies = spawn_positions.size()
+	
+	var enemy_id := 0
+	
+	# Spawn one skeleton per player
+	for i in range(player_count):
+		if enemy_id < spawn_positions.size():
+			print("SpawnManager: Spawning Skeleton #%d at position %s" % [enemy_id, spawn_positions[enemy_id]])
+			spawn_enemy("Skeleton", spawn_positions[enemy_id], enemy_id)
+			enemy_id += 1
+		else:
+			print("SpawnManager: No more spawn positions for Skeleton #%d" % enemy_id)
+	
+	# Spawn one random enemy from the other types
+	if enemy_id < spawn_positions.size():
+		var random_enemy_types: Array[String] = ["SkeletonKnight", "UndeadMage", "Spirit", "DarkLord"]
+		var random_type: String = random_enemy_types.pick_random()
+		print("SpawnManager: Spawning %s at position %s" % [random_type, spawn_positions[enemy_id]])
+		spawn_enemy(random_type, spawn_positions[enemy_id], enemy_id)
+	else:
+		print("SpawnManager: No spawn position available for random enemy")
 
 func spawn_enemy(enemy_type: String, grid_position: Vector2i, enemy_id: int) -> BaseCharacter:
 	"""Spawn a single enemy"""
@@ -173,6 +227,14 @@ func get_enemy_scene(enemy_type: String) -> PackedScene:
 	match enemy_type:
 		"Skeleton":
 			return skeleton_scene
+		"SkeletonKnight":
+			return skeleton_knight_scene
+		"UndeadMage":
+			return undead_mage_scene
+		"Spirit":
+			return spirit_scene
+		"DarkLord":
+			return dark_lord_scene
 		_:
 			return skeleton_scene
 
